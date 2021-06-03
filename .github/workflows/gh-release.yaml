@@ -3,20 +3,20 @@ on:
     branches:    
       - main
     paths:
-      - 'VERSION'
+      - 'RELEASE'
   pull_request:
+    types: [opened, synchronize]
     branches:
       - main
     paths:
-      - 'VERSION'
+      - 'RELEASE'
 
 jobs:
-  actions-tagger:
+  gh-release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v1
-      - uses: pipe-cd/actions-gh-release@95c51c646e75db5c6b7d447e3087bcee58677341
+      - uses: ./
         with:
-          version_file: 'VERSION'
-        env:
-          GITHUB_TOKEN: '${{secrets.GITHUB_TOKEN}}'
+          release_file: 'RELEASE'
+          token: ${{ secrets.GITHUB_TOKEN }}
