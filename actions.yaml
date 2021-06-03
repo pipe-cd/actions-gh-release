@@ -1,0 +1,23 @@
+name: 'Create a Release'
+description: 'Create a new release when the VERSION file changed'
+inputs:
+  version_file:
+    description: 'The path to the VERSION file'
+    required: true
+    default: 'VERSION'
+  change_log_file:
+    description: 'The path to the change log file'
+    required: false
+outputs:
+  id:
+    description: 'The ID of the created release'
+  html_url:
+    description: 'The HTML URL to view the created release'
+  upload_url:
+    description: 'The URL for uploading assets to the created release'
+runs:
+  using: 'node12'
+  main: 'dist/index.js'
+branding:
+  icon: 'tag'
+  color: 'green'
