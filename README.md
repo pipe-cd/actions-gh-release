@@ -2,7 +2,7 @@
 
 An action that enables operating GitHub release via pull request. You send a pull request to update the RELEASE file and the changelog will be generated and commented in that pull request for reviewing. And after merging it, a new GitHub release will be created with that changelog.
 
-![](https://github.com/pipe-cd/actions-gh-release/blob/master/assets/changelog-comment.png)
+![](https://github.com/pipe-cd/actions-gh-release/blob/main/assets/changelog-comment.png)
 
 ## Usage
 
