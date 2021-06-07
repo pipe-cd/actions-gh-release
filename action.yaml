@@ -1,4 +1,4 @@
-name: 'Create Release'
+name: 'Create GitHub Release'
 description: 'Create a new release when the RELEASE file was modified.'
 author: 'PipeCD team'
 inputs:
