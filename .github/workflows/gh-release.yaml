@@ -1,3 +1,5 @@
+name: GitHub Release
+
 on:
   push:
     branches:    
