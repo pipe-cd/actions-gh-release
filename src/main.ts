@@ -4,7 +4,7 @@ import * as github from '@actions/github'
 import * as path from 'path'
 import {loadConfig} from './config'
 import {Git} from './git'
-import {generateChangeLog, Options} from './changelog'
+import {generateChangeLog} from './changelog'
 import {
   Commenter,
   release,
@@ -81,13 +81,17 @@ async function run(): Promise<void> {
       const releaser = new Releaser(octokit, owner, repo)
       const title = headCfg.title ?? `Release ${headCfg.tag}`
       const r = await release(releaser, {
-        tag_name: headCfg.tag,
+        tagName: headCfg.tag,
         name: title,
         target_commitish: headSHA,
         body: body,
         draft: false,
         prerelease: headCfg.prerelease,
       })
+      core.setOutput('id', r.id)
+      core.setOutput('html_url', r.html_url)
+      core.setOutput('upload_url', r.upload_url)
+      core.setOutput('changelog', body)
       core.info(`Successfully released ${headCfg.tag}. See ${r.html_url}`)
       return
     }
@@ -97,6 +101,7 @@ async function run(): Promise<void> {
     const commenter = new Commenter(octokit, owner, repo)
     const message = `A GitHub release with \`${headCfg.tag}\` tag will be created once this pull request got merged.\n\n## Changelog since ${baseCfg.tag}\n${body}`
     const c = await commenter.comment(pull_number, message)
+    core.setOutput('changelog', body)
     core.info(
       `Successfully commented the changelog to pull request ${pull_number}`
     )

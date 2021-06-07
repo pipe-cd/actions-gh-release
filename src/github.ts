@@ -3,7 +3,7 @@ import * as github from '@actions/github'
 import {GitHub} from '@actions/github/lib/utils'
 
 export interface ReleaseInput {
-  tag_name: string
+  tagName: string
   name: string
   target_commitish: string
   body: string
@@ -15,7 +15,7 @@ export interface Release {
   id: number
   upload_url: string
   html_url: string
-  tag_name: string
+  tagName: string
   body: string | null | undefined
   target_commitish: string
 }
@@ -42,7 +42,7 @@ export class Releaser {
       id: r.data.id,
       upload_url: r.data.upload_url,
       html_url: r.data.html_url,
-      tag_name: r.data.tag_name,
+      tagName: r.data.tag_name,
       body: r.data.body,
       target_commitish: r.data.target_commitish,
     }
@@ -52,7 +52,7 @@ export class Releaser {
     const r = await this.gh.rest.repos.createRelease({
       owner: this.owner,
       repo: this.repo,
-      tag_name: input.tag_name,
+      tag_name: input.tagName,
       name: input.name,
       body: input.body,
       draft: input.draft,
@@ -64,7 +64,7 @@ export class Releaser {
       id: r.data.id,
       upload_url: r.data.upload_url,
       html_url: r.data.html_url,
-      tag_name: r.data.tag_name,
+      tagName: r.data.tag_name,
       body: r.data.body,
       target_commitish: r.data.target_commitish,
     }
@@ -75,7 +75,7 @@ export class Releaser {
       owner: this.owner,
       repo: this.repo,
       release_id: id,
-      tag_name: input.tag_name,
+      tag_name: input.tagName,
       name: input.name,
       body: input.body,
       draft: input.draft,
@@ -87,7 +87,7 @@ export class Releaser {
       id: r.data.id,
       upload_url: r.data.upload_url,
       html_url: r.data.html_url,
-      tag_name: r.data.tag_name,
+      tagName: r.data.tag_name,
       body: r.data.body,
       target_commitish: r.data.target_commitish,
     }
@@ -98,28 +98,26 @@ export const release = async (
   releaser: Releaser,
   input: ReleaseInput
 ): Promise<Release> => {
-  const tag_name = input.tag_name
+  const tagName = input.tagName
 
   try {
-    const cur = await releaser.getReleaseByTag(tag_name)
+    const cur = await releaser.getReleaseByTag(tagName)
     const release = await releaser.updateRelease(cur.id, input)
     return release
   } catch (error) {
     if (error.status !== 404) {
       core.error(
-        `Unexpected error while fetching GitHub release for tag ${tag_name}: ${error}`
+        `Unexpected error while fetching GitHub release for tag ${tagName}: ${error}`
       )
       throw error
     }
 
-    core.info(`Creating new GitHub release for tag ${tag_name}...`)
+    core.info(`Creating new GitHub release for tag ${tagName}...`)
     try {
       const release = await releaser.createRelease(input)
       return release
     } catch (error) {
-      core.error(
-        `Failed to create GitHub release for tag ${tag_name}: ${error}`
-      )
+      core.error(`Failed to create GitHub release for tag ${tagName}: ${error}`)
       throw error
     }
   }

@@ -228,7 +228,7 @@ class Releaser {
                 id: r.data.id,
                 upload_url: r.data.upload_url,
                 html_url: r.data.html_url,
-                tag_name: r.data.tag_name,
+                tagName: r.data.tag_name,
                 body: r.data.body,
                 target_commitish: r.data.target_commitish,
             };
@@ -239,7 +239,7 @@ class Releaser {
             const r = yield this.gh.rest.repos.createRelease({
                 owner: this.owner,
                 repo: this.repo,
-                tag_name: input.tag_name,
+                tag_name: input.tagName,
                 name: input.name,
                 body: input.body,
                 draft: input.draft,
@@ -250,7 +250,7 @@ class Releaser {
                 id: r.data.id,
                 upload_url: r.data.upload_url,
                 html_url: r.data.html_url,
-                tag_name: r.data.tag_name,
+                tagName: r.data.tag_name,
                 body: r.data.body,
                 target_commitish: r.data.target_commitish,
             };
@@ -262,7 +262,7 @@ class Releaser {
                 owner: this.owner,
                 repo: this.repo,
                 release_id: id,
-                tag_name: input.tag_name,
+                tag_name: input.tagName,
                 name: input.name,
                 body: input.body,
                 draft: input.draft,
@@ -273,7 +273,7 @@ class Releaser {
                 id: r.data.id,
                 upload_url: r.data.upload_url,
                 html_url: r.data.html_url,
-                tag_name: r.data.tag_name,
+                tagName: r.data.tag_name,
                 body: r.data.body,
                 target_commitish: r.data.target_commitish,
             };
@@ -282,24 +282,24 @@ class Releaser {
 }
 exports.Releaser = Releaser;
 const release = (releaser, input) => __awaiter(void 0, void 0, void 0, function* () {
-    const tag_name = input.tag_name;
+    const tagName = input.tagName;
     try {
-        const cur = yield releaser.getReleaseByTag(tag_name);
+        const cur = yield releaser.getReleaseByTag(tagName);
         const release = yield releaser.updateRelease(cur.id, input);
         return release;
     }
     catch (error) {
         if (error.status !== 404) {
-            core.error(`Unexpected error while fetching GitHub release for tag ${tag_name}: ${error}`);
+            core.error(`Unexpected error while fetching GitHub release for tag ${tagName}: ${error}`);
             throw error;
         }
-        core.info(`Creating new GitHub release for tag ${tag_name}...`);
+        core.info(`Creating new GitHub release for tag ${tagName}...`);
         try {
             const release = yield releaser.createRelease(input);
             return release;
         }
         catch (error) {
-            core.error(`Failed to create GitHub release for tag ${tag_name}: ${error}`);
+            core.error(`Failed to create GitHub release for tag ${tagName}: ${error}`);
             throw error;
         }
     }
@@ -449,13 +449,17 @@ function run() {
                 const releaser = new github_1.Releaser(octokit, owner, repo);
                 const title = (_a = headCfg.title) !== null && _a !== void 0 ? _a : `Release ${headCfg.tag}`;
                 const r = yield github_1.release(releaser, {
-                    tag_name: headCfg.tag,
+                    tagName: headCfg.tag,
                     name: title,
                     target_commitish: headSHA,
                     body: body,
                     draft: false,
                     prerelease: headCfg.prerelease,
                 });
+                core.setOutput('id', r.id);
+                core.setOutput('html_url', r.html_url);
+                core.setOutput('upload_url', r.upload_url);
+                core.setOutput('changelog', body);
                 core.info(`Successfully released ${headCfg.tag}. See ${r.html_url}`);
                 return;
             }
@@ -464,6 +468,7 @@ function run() {
             const commenter = new github_1.Commenter(octokit, owner, repo);
             const message = `A GitHub release with \`${headCfg.tag}\` tag will be created once this pull request got merged.\n\n## Changelog since ${baseCfg.tag}\n${body}`;
             const c = yield commenter.comment(pull_number, message);
+            core.setOutput('changelog', body);
             core.info(`Successfully commented the changelog to pull request ${pull_number}`);
             return;
         }
