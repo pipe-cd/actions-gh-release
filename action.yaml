@@ -21,11 +21,11 @@ inputs:
     required: false
     default: true
   changelog_only_use_merge_commit:
-    description: 'Only use merge commit to generate changelog. Ignore all other kinds.'
+    description: 'Only use merge commits to generate changelog. Ignore all other commit kinds.'
     required: false
     default: false
   changelog_ignore_merge_commit:
-    description: 'Ignore merge commit from the changelog.'
+    description: 'Ignore merge commits from the changelog.'
     required: false
     default: false
 outputs:
