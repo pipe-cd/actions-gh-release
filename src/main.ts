@@ -4,7 +4,7 @@ import * as github from '@actions/github'
 import * as path from 'path'
 import {loadConfig} from './config'
 import {Git} from './git'
-import {generateChangeLog} from './changelog'
+import {generateChangeLog, Options} from './changelog'
 import {
   Commenter,
   release,
@@ -56,7 +56,22 @@ async function run(): Promise<void> {
       body = core.getInput('body')
     }
     if (!body) {
-      body = generateChangeLog(baseCfg.tag, headSHA)
+      const showAbbrevHash =
+        core.getInput('changelog_show_abbrev_hash').toLowerCase() === 'true'
+      const showCommitter =
+        core.getInput('changelog_show_committer').toLowerCase() === 'true'
+      const onlyUseMergeCommit =
+        core.getInput('changelog_only_use_merge_commit').toLowerCase() ===
+        'true'
+      const ignoreMergeCommit =
+        core.getInput('changelog_ignore_merge_commit').toLowerCase() === 'true'
+
+      body = generateChangeLog(workingDir, baseCfg.tag, headSHA, {
+        showAbbrevHash: showAbbrevHash,
+        showCommitter: showCommitter,
+        onlyUseMergeCommit: onlyUseMergeCommit,
+        ignoreMergeCommit: ignoreMergeCommit,
+      })
     }
 
     const octokit = github.getOctokit(token)

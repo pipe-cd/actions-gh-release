@@ -1,23 +1,42 @@
 name: 'Create Release'
-description: 'Create a new release when the RELEASE file changed'
-autho: 'PipeCD team'
+description: 'Create a new release when the RELEASE file was modified.'
+author: 'PipeCD team'
 inputs:
   release_file:
-    description: 'The path to the RELEASE file'
+    description: 'The path to the RELEASE file.'
     required: false
     default: 'RELEASE'
   token:
-    description: 'The GITHUB_TOKEN secret'
+    description: 'The GITHUB_TOKEN secret.'
     required: true
   body:
     description: 'The release body should be used. Empty means using an auto-generated changelog.'
+    required: false
+  changelog_show_abbrev_hash:
+    description: 'Include abbreviated hash value in the changelog.'
+    required: false
+    default: true
+  changelog_show_committer:
+    description: 'Include committer name in the changelog.'
+    required: false
+    default: true
+  changelog_only_use_merge_commit:
+    description: 'Only use merge commit to generate changelog. Ignore all other kinds.'
+    required: false
+    default: false
+  changelog_ignore_merge_commit:
+    description: 'Ignore merge commit from the changelog.'
+    required: false
+    default: false
 outputs:
   id:
-    description: 'The ID of the created release'
+    description: 'The ID of the created release.'
   html_url:
-    description: 'The HTML URL to view the created release'
+    description: 'The HTML URL to view the created release.'
   upload_url:
-    description: 'The URL for uploading assets to the created release'
+    description: 'The URL for uploading assets to the created release.'
+  changelog:
+    description: 'The generated changelog for the release.'
 runs:
   using: 'node12'
   main: 'dist/index.js'

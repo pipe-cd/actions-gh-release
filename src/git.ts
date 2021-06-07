@@ -1,5 +1,14 @@
 import * as exec from '@actions/exec'
 
+export interface Commit {
+  author: string
+  committer: string
+  hash: string
+  abbrevHash: string
+  message: string
+  body: string
+}
+
 export interface GitFileReader {
   readFile(commit: string, path: string): Promise<string>
 }

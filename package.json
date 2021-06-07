@@ -30,6 +30,7 @@
     "@actions/github": "^5.0.0",
     "@actions/io": "^1.1.0",
     "@octokit/rest": "^18.5.6",
+    "gitlog": "^4.0.4",
     "yaml": "^1.10.2"
   },
   "devDependencies": {
