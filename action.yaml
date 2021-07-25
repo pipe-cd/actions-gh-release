@@ -31,6 +31,8 @@ inputs:
 outputs:
   id:
     description: 'The ID of the created release.'
+  tag:
+    description: 'The tag name of the created release.'
   html_url:
     description: 'The HTML URL to view the created release.'
   upload_url:

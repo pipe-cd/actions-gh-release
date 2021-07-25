@@ -103,6 +103,7 @@ async function run(): Promise<void> {
         prerelease: headCfg.prerelease,
       })
       core.setOutput('id', r.id)
+      core.setOutput('tag', r.tagName)
       core.setOutput('html_url', r.html_url)
       core.setOutput('upload_url', r.upload_url)
       core.setOutput('changelog', body)
