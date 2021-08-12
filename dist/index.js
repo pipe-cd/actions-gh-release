@@ -414,18 +414,15 @@ function run() {
             const releaseFile = core.getInput('release_file');
             const gitPath = yield io.which('git', true);
             const git = new git_1.Git(gitPath, workingDir);
-            // Load release configuration data at the head commit.
             const headSHA = github_1.getHeadCommitSHA();
             const headCfg = yield config_1.loadConfig(git, headSHA, releaseFile);
             core.info(`Loaded release config from ${releaseFile} at the HEAD commit (${headSHA})`);
-            // Load release configuration data at the base commit.
             const baseSHA = github_1.getBaseCommitSHA();
             const baseCfg = yield config_1.loadConfig(git, baseSHA, releaseFile);
             core.info(`Loaded release config from ${releaseFile} file at the BASE commit (${baseSHA})`);
             const token = core.getInput('token');
             const owner = github.context.repo.owner;
             const repo = github.context.repo.repo;
-            // Determine the release body.
             let body = headCfg.body;
             if (!body) {
                 body = core.getInput('body');
@@ -444,7 +441,6 @@ function run() {
                 });
             }
             const octokit = github.getOctokit(token);
-            // Make a new release or update the existing one.
             if (event === 'push') {
                 const releaser = new github_1.Releaser(octokit, owner, repo);
                 const title = (_a = headCfg.title) !== null && _a !== void 0 ? _a : `Release ${headCfg.tag}`;
@@ -457,13 +453,13 @@ function run() {
                     prerelease: headCfg.prerelease,
                 });
                 core.setOutput('id', r.id);
+                core.setOutput('tag', r.tagName);
                 core.setOutput('html_url', r.html_url);
                 core.setOutput('upload_url', r.upload_url);
                 core.setOutput('changelog', body);
                 core.info(`Successfully released ${headCfg.tag}. See ${r.html_url}`);
                 return;
             }
-            // Leave a comment to show changelog on the pull request.
             const pull_number = github.context.payload.pull_request.number;
             const commenter = new github_1.Commenter(octokit, owner, repo);
             const message = `A GitHub release with \`${headCfg.tag}\` tag will be created once this pull request got merged.\n\n## Changelog since ${baseCfg.tag}\n${body}`;
