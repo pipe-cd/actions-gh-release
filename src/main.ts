@@ -18,7 +18,7 @@ import * as github from '@actions/github'
 import * as path from 'path'
 import {loadConfig} from './config'
 import {Git} from './git'
-import {generateChangeLog} from './changelog'
+import {getCommits, renderChangeLog, renderChangeJSON} from './changelog'
 import {
   Commenter,
   release,
@@ -64,28 +64,35 @@ async function run(): Promise<void> {
     const owner = github.context.repo.owner
     const repo = github.context.repo.repo
 
+    const onlyUseMergeCommit = core.getInput('changelog_only_use_merge_commit').toLowerCase() === 'true'
+    const ignoreMergeCommit = core.getInput('changelog_ignore_merge_commit').toLowerCase() === 'true'
+
+    let commits = getCommits(workingDir, baseCfg.tag, headSHA, {
+      onlyUseMergeCommit: onlyUseMergeCommit,
+      ignoreMergeCommit: ignoreMergeCommit,
+    })
+    let changeJSON = renderChangeJSON(baseCfg.tag, headCfg.tag, commits)
+    core.info(
+      `Successfully generated change list \n${changeJSON}`
+    )
+
     // Determine the release body.
     let body = headCfg.body
     if (!body) {
       body = core.getInput('body')
     }
     if (!body) {
-      const showAbbrevHash =
-        core.getInput('changelog_show_abbrev_hash').toLowerCase() === 'true'
-      const showCommitter =
-        core.getInput('changelog_show_committer').toLowerCase() === 'true'
-      const onlyUseMergeCommit =
-        core.getInput('changelog_only_use_merge_commit').toLowerCase() ===
-        'true'
-      const ignoreMergeCommit =
-        core.getInput('changelog_ignore_merge_commit').toLowerCase() === 'true'
+      const showAbbrevHash = core.getInput('changelog_show_abbrev_hash').toLowerCase() === 'true'
+      const showCommitter = core.getInput('changelog_show_committer').toLowerCase() === 'true'
 
-      body = generateChangeLog(workingDir, baseCfg.tag, headSHA, {
+      body = renderChangeLog(commits, {
         showAbbrevHash: showAbbrevHash,
         showCommitter: showCommitter,
         onlyUseMergeCommit: onlyUseMergeCommit,
-        ignoreMergeCommit: ignoreMergeCommit,
       })
+      core.info(
+        `Successfully generated changelog \n${body}`
+      )
     }
 
     const octokit = github.getOctokit(token)
@@ -102,11 +109,13 @@ async function run(): Promise<void> {
         draft: false,
         prerelease: headCfg.prerelease,
       })
+
       core.setOutput('id', r.id)
       core.setOutput('tag', r.tagName)
       core.setOutput('html_url', r.html_url)
       core.setOutput('upload_url', r.upload_url)
       core.setOutput('changelog', body)
+      core.setOutput('change_json', changeJSON)
       core.info(`Successfully released ${headCfg.tag}. See ${r.html_url}`)
       return
     }
@@ -116,7 +125,9 @@ async function run(): Promise<void> {
     const commenter = new Commenter(octokit, owner, repo)
     const message = `A GitHub release with \`${headCfg.tag}\` tag will be created once this pull request got merged.\n\n## Changelog since ${baseCfg.tag}\n${body}`
     const c = await commenter.comment(pull_number, message)
+
     core.setOutput('changelog', body)
+    core.setOutput('change_json', changeJSON)
     core.info(
       `Successfully commented the changelog to pull request ${pull_number}`
     )

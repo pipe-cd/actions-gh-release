@@ -19,7 +19,7 @@ export interface Commit {
   committer: string
   hash: string
   abbrevHash: string
-  message: string
+  subject: string
   body: string
 }
 
