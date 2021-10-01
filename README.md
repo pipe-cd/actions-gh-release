@@ -60,10 +60,11 @@ jobs:
 
 ## Outputs
 
-| Name       | Description                                          |
-|------------|------------------------------------------------------|
-| id         | The ID of the created release.                       |
-| tag        | The tag name of the created release.                 |
-| html_url   | The HTML URL to view the created release.            |
-| upload_url | The URL for uploading assets to the created release. |
-| changelog  | The gnerated changelog for the release.              |
+| Name        | Description                                          |
+|-------------|------------------------------------------------------|
+| id          | The ID of the created release.                       |
+| tag         | The tag name of the created release.                 |
+| html_url    | The HTML URL to view the created release.            |
+| upload_url  | The URL for uploading assets to the created release. |
+| changelog   | The generated changelog for the release.             |
+| change_json | The change list formatted in JSON.                   |

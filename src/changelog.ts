@@ -13,22 +13,28 @@
 // limitations under the License.
 
 import gitlog from 'gitlog'
+import {Commit} from './git'
 
 const mergeCommitPrefix = 'Merge pull request #'
 
 export interface Options {
-  showAbbrevHash: boolean
-  showCommitter: boolean
   onlyUseMergeCommit: boolean
   ignoreMergeCommit: boolean
 }
 
-export function generateChangeLog(
+export interface RenderOptions {
+  showAbbrevHash: boolean
+  showCommitter: boolean
+  onlyUseMergeCommit: boolean
+}
+
+export function getCommits(
   repoDir: string,
   fromTag: string,
   toSHA: string,
   options: Options
-): string {
+): Commit[] {
+
   const commits = gitlog({
     repo: repoDir,
     branch: `${toSHA}...${fromTag}`,
@@ -42,7 +48,8 @@ export function generateChangeLog(
       'committerDate',
     ] as const,
   })
-  const logs = commits
+
+  return commits
     .filter(c => {
       if (options.ignoreMergeCommit) {
         return !c.subject.startsWith(mergeCommitPrefix)
@@ -51,12 +58,29 @@ export function generateChangeLog(
         return c.subject.startsWith(mergeCommitPrefix)
       }
       return true
+    }).map(c => {
+      return {
+        author: c.authorName,
+        committer: c.committerName,
+        hash: c.hash,
+        abbrevHash: c.abbrevHash,
+        subject: c.subject,
+        body: c.body,
+      }
     })
-    .map(c => {
+}
+
+export function renderChangeLog(
+  commits: Commit[],
+  options: RenderOptions
+): string {
+
+    const logs = commits.map(c => {
       let fields: string[] = ['*']
       if (options.showAbbrevHash) {
         fields.push(c.abbrevHash)
       }
+
       if (!options.onlyUseMergeCommit) {
         fields.push(c.subject)
       } else {
@@ -65,11 +89,27 @@ export function generateChangeLog(
         const pr = subject.split(' ', 1)[0]
         fields.push(`${message} #${pr}`)
       }
+
       if (options.showCommitter) {
-        fields.push(`- by @${c.committerName}`)
+        fields.push(`- by @${c.committer}`)
       }
+
       return fields.join(' ')
     })
 
   return logs.join(`\n`)
+}
+
+export function renderChangeJSON(
+  fromTag: string,
+  toTag: string,
+  commits: Commit[]
+): string {
+  var changes = {
+    fromTag: fromTag,
+    toTag: toTag,
+    commits: commits,
+  }
+
+  return JSON.stringify(changes, null, 4);
 }
