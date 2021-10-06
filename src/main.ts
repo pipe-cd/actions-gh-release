@@ -66,10 +66,12 @@ async function run(): Promise<void> {
 
     const onlyUseMergeCommit = core.getInput('changelog_only_use_merge_commit').toLowerCase() === 'true'
     const ignoreMergeCommit = core.getInput('changelog_ignore_merge_commit').toLowerCase() === 'true'
+    const maxCommitsNumber = Number(core.getInput('changelog_max_commits_number')) || 100
 
     let commits = getCommits(workingDir, baseCfg.tag, headSHA, {
       onlyUseMergeCommit: onlyUseMergeCommit,
       ignoreMergeCommit: ignoreMergeCommit,
+      maxCommitsNumber: maxCommitsNumber,
     })
     let changeJSON = renderChangeJSON(baseCfg.tag, headCfg.tag, commits)
     core.info(

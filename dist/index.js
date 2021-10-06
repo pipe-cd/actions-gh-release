@@ -18,6 +18,7 @@ function getCommits(repoDir, fromTag, toSHA, options) {
     const commits = gitlog_1.default({
         repo: repoDir,
         branch: `${toSHA}...${fromTag}`,
+        number: options.maxCommitsNumber,
         fields: [
             'subject',
             'body',
@@ -446,9 +447,11 @@ function run() {
             const repo = github.context.repo.repo;
             const onlyUseMergeCommit = core.getInput('changelog_only_use_merge_commit').toLowerCase() === 'true';
             const ignoreMergeCommit = core.getInput('changelog_ignore_merge_commit').toLowerCase() === 'true';
+            const maxCommitsNumber = Number(core.getInput('changelog_max_commits_number')) || 100;
             let commits = changelog_1.getCommits(workingDir, baseCfg.tag, headSHA, {
                 onlyUseMergeCommit: onlyUseMergeCommit,
                 ignoreMergeCommit: ignoreMergeCommit,
+                maxCommitsNumber: maxCommitsNumber,
             });
             let changeJSON = changelog_1.renderChangeJSON(baseCfg.tag, headCfg.tag, commits);
             core.info(`Successfully generated change list \n${changeJSON}`);

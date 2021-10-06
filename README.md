@@ -57,6 +57,7 @@ jobs:
 | changelog_show_committer        | Include committer name in the changelog.                                        |    no    |      true     |
 | changelog_only_use_merge_commit | Only use merge commits to generate changelog. Ignore all other commit kinds.    |    no    |     false     |
 | changelog_ignore_merge_commit   | Ignore merge commits from the changelog.                                        |    no    |     false     |
+| changelog_max_commits_number    | The number of commits in the changelog.                                         |    no    |      100      |
 
 ## Outputs
 
