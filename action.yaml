@@ -28,6 +28,10 @@ inputs:
     description: 'Ignore merge commits from the changelog.'
     required: false
     default: false
+  changelog_max_commits_number:
+    description: 'The number of commits in the changelog.'
+    required: false
+    default: 100
 outputs:
   id:
     description: 'The ID of the created release.'
