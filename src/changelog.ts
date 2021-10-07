@@ -20,6 +20,7 @@ const mergeCommitPrefix = 'Merge pull request #'
 export interface Options {
   onlyUseMergeCommit: boolean
   ignoreMergeCommit: boolean
+  maxCommitsNumber: number
 }
 
 export interface RenderOptions {
@@ -38,6 +39,7 @@ export function getCommits(
   const commits = gitlog({
     repo: repoDir,
     branch: `${toSHA}...${fromTag}`,
+    number: options.maxCommitsNumber,
     fields: [
       'subject',
       'body',
