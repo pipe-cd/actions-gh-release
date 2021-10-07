@@ -40,7 +40,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v1
-      - uses: pipe-cd/actions-gh-release@v1.2.0
+      - uses: pipe-cd/actions-gh-release@v1.2.1
         with:
           release_file: 'RELEASE'
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -57,7 +57,7 @@ jobs:
 | changelog_show_committer        | Include committer name in the changelog.                                        |    no    |      true     |
 | changelog_only_use_merge_commit | Only use merge commits to generate changelog. Ignore all other commit kinds.    |    no    |     false     |
 | changelog_ignore_merge_commit   | Ignore merge commits from the changelog.                                        |    no    |     false     |
-| changelog_max_commits_number    | The maximum number of commits could be retrieved to generate changelog.                                         |    no    |      100      |
+| changelog_max_commits_number    | The maximum number of commits could be retrieved to generate changelog.         |    no    |      100      |
 
 ## Outputs
 
