@@ -29,7 +29,7 @@ inputs:
     required: false
     default: false
   changelog_max_commits_number:
-    description: 'The number of commits in the changelog.'
+    description: 'The maximum number of commits could be retrieved to generate the changelog.'
     required: false
     default: 100
 outputs:
