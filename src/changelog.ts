@@ -93,7 +93,7 @@ export function renderChangeLog(
       }
 
       if (options.showCommitter) {
-        fields.push(`- by @${c.committer}`)
+        fields.push(`- by ${c.committer}`)
       }
 
       return fields.join(' ')
