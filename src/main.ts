@@ -63,17 +63,20 @@ async function run(): Promise<void> {
     const token = core.getInput('token')
     const owner = github.context.repo.owner
     const repo = github.context.repo.repo
-
-    const onlyUseMergeCommit = core.getInput('changelog_only_use_merge_commit').toLowerCase() === 'true'
-    const ignoreMergeCommit = core.getInput('changelog_ignore_merge_commit').toLowerCase() === 'true'
-    const maxCommitsNumber = Number(core.getInput('changelog_max_commits_number')) || 100
-
+    const maxCommitsNumber = Number(core.getInput('max_commits_number')) || 100
     let commits = getCommits(workingDir, baseCfg.tag, headSHA, {
-      onlyUseMergeCommit: onlyUseMergeCommit,
-      ignoreMergeCommit: ignoreMergeCommit,
       maxCommitsNumber: maxCommitsNumber,
     })
-    let changeJSON = renderChangeJSON(baseCfg.tag, headCfg.tag, commits)
+
+    // Determine the change list.
+    const changelistIgnoreMergeCommit = core.getInput('changelist_ignore_merge_commit').toLowerCase() === 'true'
+    const changelistOnlyUseMergeCommit = core.getInput('changelist_only_use_merge_commit').toLowerCase() === 'true'
+    let changeJSON = renderChangeJSON(baseCfg.tag, headCfg.tag, commits, {
+      showAbbrevHash: false,
+      showCommitter: false,
+      ignoreMergeCommit: changelistIgnoreMergeCommit,
+      onlyUseMergeCommit: changelistOnlyUseMergeCommit,
+    })
     core.info(
       `Successfully generated change list \n${changeJSON}`
     )
@@ -86,11 +89,13 @@ async function run(): Promise<void> {
     if (!body) {
       const showAbbrevHash = core.getInput('changelog_show_abbrev_hash').toLowerCase() === 'true'
       const showCommitter = core.getInput('changelog_show_committer').toLowerCase() === 'true'
-
+      const changelogIgnoreMergeCommit = core.getInput('changelog_ignore_merge_commit').toLowerCase() === 'true'
+      const changelogOnlyUseMergeCommit = core.getInput('changelog_only_use_merge_commit').toLowerCase() === 'true'
       body = renderChangeLog(commits, {
         showAbbrevHash: showAbbrevHash,
         showCommitter: showCommitter,
-        onlyUseMergeCommit: onlyUseMergeCommit,
+        ignoreMergeCommit: changelogIgnoreMergeCommit,
+        onlyUseMergeCommit: changelogOnlyUseMergeCommit,
       })
       core.info(
         `Successfully generated changelog \n${body}`
@@ -117,7 +122,7 @@ async function run(): Promise<void> {
       core.setOutput('html_url', r.html_url)
       core.setOutput('upload_url', r.upload_url)
       core.setOutput('changelog', body)
-      core.setOutput('change_json', changeJSON)
+      core.setOutput('changelist_json', changeJSON)
       core.info(`Successfully released ${headCfg.tag}. See ${r.html_url}`)
       return
     }
@@ -129,7 +134,7 @@ async function run(): Promise<void> {
     const c = await commenter.comment(pull_number, message)
 
     core.setOutput('changelog', body)
-    core.setOutput('change_json', changeJSON)
+    core.setOutput('changelist_json', changeJSON)
     core.info(
       `Successfully commented the changelog to pull request ${pull_number}`
     )

@@ -30,15 +30,7 @@ function getCommits(repoDir, fromTag, toSHA, options) {
         ],
     });
     return commits
-        .filter(c => {
-        if (options.ignoreMergeCommit) {
-            return !c.subject.startsWith(mergeCommitPrefix);
-        }
-        if (options.onlyUseMergeCommit) {
-            return c.subject.startsWith(mergeCommitPrefix);
-        }
-        return true;
-    }).map(c => {
+        .map(c => {
         return {
             author: c.authorName,
             committer: c.committerName,
@@ -51,7 +43,16 @@ function getCommits(repoDir, fromTag, toSHA, options) {
 }
 exports.getCommits = getCommits;
 function renderChangeLog(commits, options) {
-    const logs = commits.map(c => {
+    const logs = commits
+        .filter(c => {
+        if (options.ignoreMergeCommit) {
+            return !c.subject.startsWith(mergeCommitPrefix);
+        }
+        if (options.onlyUseMergeCommit) {
+            return c.subject.startsWith(mergeCommitPrefix);
+        }
+        return true;
+    }).map(c => {
         let fields = ['*'];
         if (options.showAbbrevHash) {
             fields.push(c.abbrevHash);
@@ -66,18 +67,26 @@ function renderChangeLog(commits, options) {
             fields.push(`${message} #${pr}`);
         }
         if (options.showCommitter) {
-            fields.push(`- by @${c.committer}`);
+            fields.push(`- by ${c.committer}`);
         }
         return fields.join(' ');
     });
     return logs.join(`\n`);
 }
 exports.renderChangeLog = renderChangeLog;
-function renderChangeJSON(fromTag, toTag, commits) {
-    var changes = {
+function renderChangeJSON(fromTag, toTag, commits, options) {
+    const changes = {
         fromTag: fromTag,
         toTag: toTag,
-        commits: commits,
+        commits: commits.filter(c => {
+            if (options.ignoreMergeCommit) {
+                return !c.subject.startsWith(mergeCommitPrefix);
+            }
+            if (options.onlyUseMergeCommit) {
+                return c.subject.startsWith(mergeCommitPrefix);
+            }
+            return true;
+        }),
     };
     return JSON.stringify(changes, null, 4);
 }
@@ -445,15 +454,18 @@ function run() {
             const token = core.getInput('token');
             const owner = github.context.repo.owner;
             const repo = github.context.repo.repo;
-            const onlyUseMergeCommit = core.getInput('changelog_only_use_merge_commit').toLowerCase() === 'true';
-            const ignoreMergeCommit = core.getInput('changelog_ignore_merge_commit').toLowerCase() === 'true';
-            const maxCommitsNumber = Number(core.getInput('changelog_max_commits_number')) || 100;
+            const maxCommitsNumber = Number(core.getInput('max_commits_number')) || 100;
             let commits = changelog_1.getCommits(workingDir, baseCfg.tag, headSHA, {
-                onlyUseMergeCommit: onlyUseMergeCommit,
-                ignoreMergeCommit: ignoreMergeCommit,
                 maxCommitsNumber: maxCommitsNumber,
             });
-            let changeJSON = changelog_1.renderChangeJSON(baseCfg.tag, headCfg.tag, commits);
+            const changelistIgnoreMergeCommit = core.getInput('changelist_ignore_merge_commit').toLowerCase() === 'true';
+            const changelistOnlyUseMergeCommit = core.getInput('changelist_only_use_merge_commit').toLowerCase() === 'true';
+            let changeJSON = changelog_1.renderChangeJSON(baseCfg.tag, headCfg.tag, commits, {
+                showAbbrevHash: false,
+                showCommitter: false,
+                ignoreMergeCommit: changelistIgnoreMergeCommit,
+                onlyUseMergeCommit: changelistOnlyUseMergeCommit,
+            });
             core.info(`Successfully generated change list \n${changeJSON}`);
             let body = headCfg.body;
             if (!body) {
@@ -462,10 +474,13 @@ function run() {
             if (!body) {
                 const showAbbrevHash = core.getInput('changelog_show_abbrev_hash').toLowerCase() === 'true';
                 const showCommitter = core.getInput('changelog_show_committer').toLowerCase() === 'true';
+                const changelogIgnoreMergeCommit = core.getInput('changelog_ignore_merge_commit').toLowerCase() === 'true';
+                const changelogOnlyUseMergeCommit = core.getInput('changelog_only_use_merge_commit').toLowerCase() === 'true';
                 body = changelog_1.renderChangeLog(commits, {
                     showAbbrevHash: showAbbrevHash,
                     showCommitter: showCommitter,
-                    onlyUseMergeCommit: onlyUseMergeCommit,
+                    ignoreMergeCommit: changelogIgnoreMergeCommit,
+                    onlyUseMergeCommit: changelogOnlyUseMergeCommit,
                 });
                 core.info(`Successfully generated changelog \n${body}`);
             }
@@ -486,7 +501,7 @@ function run() {
                 core.setOutput('html_url', r.html_url);
                 core.setOutput('upload_url', r.upload_url);
                 core.setOutput('changelog', body);
-                core.setOutput('change_json', changeJSON);
+                core.setOutput('changelist_json', changeJSON);
                 core.info(`Successfully released ${headCfg.tag}. See ${r.html_url}`);
                 return;
             }
@@ -495,7 +510,7 @@ function run() {
             const message = `A GitHub release with \`${headCfg.tag}\` tag will be created once this pull request got merged.\n\n## Changelog since ${baseCfg.tag}\n${body}`;
             const c = yield commenter.comment(pull_number, message);
             core.setOutput('changelog', body);
-            core.setOutput('change_json', changeJSON);
+            core.setOutput('changelist_json', changeJSON);
             core.info(`Successfully commented the changelog to pull request ${pull_number}`);
             return;
         }

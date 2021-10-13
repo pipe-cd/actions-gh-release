@@ -12,6 +12,10 @@ inputs:
   body:
     description: 'The release body should be used. Empty means using an auto-generated changelog.'
     required: false
+  max_commits_number:
+    description: 'The maximum number of commits could be retrieved to generate the changelog and changelist.'
+    required: false
+    default: 100
   changelog_show_abbrev_hash:
     description: 'Include abbreviated hash value in the changelog.'
     required: false
@@ -28,10 +32,14 @@ inputs:
     description: 'Ignore merge commits from the changelog.'
     required: false
     default: false
-  changelog_max_commits_number:
-    description: 'The maximum number of commits could be retrieved to generate the changelog.'
+  changelist_only_use_merge_commit:
+    description: 'Only use merge commits to generate change list. Ignore all other commit kinds.'
     required: false
-    default: 100
+    default: false
+  changelist_ignore_merge_commit:
+    description: 'Ignore merge commits from the change list.'
+    required: false
+    default: false
 outputs:
   id:
     description: 'The ID of the created release.'
@@ -43,7 +51,7 @@ outputs:
     description: 'The URL for uploading assets to the created release.'
   changelog:
     description: 'The generated changelog for the release.'
-  change_json:
+  changelist_json:
     description: 'The change list formatted in JSON.'
 runs:
   using: 'node12'
