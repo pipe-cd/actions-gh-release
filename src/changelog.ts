@@ -81,6 +81,7 @@ export function renderChangeLog(
       if (options.showAbbrevHash) {
         fields.push(c.abbrevHash)
       }
+
       if (!options.onlyUseMergeCommit) {
         fields.push(c.subject)
       } else {
@@ -89,9 +90,11 @@ export function renderChangeLog(
         const pr = subject.split(' ', 1)[0]
         fields.push(`${message} #${pr}`)
       }
+
       if (options.showCommitter) {
         fields.push(`- by ${c.committer}`)
       }
+
       return fields.join(' ')
     })
 
