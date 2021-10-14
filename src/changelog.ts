@@ -18,14 +18,13 @@ import {Commit} from './git'
 const mergeCommitPrefix = 'Merge pull request #'
 
 export interface Options {
-  onlyUseMergeCommit: boolean
-  ignoreMergeCommit: boolean
   maxCommitsNumber: number
 }
 
 export interface RenderOptions {
   showAbbrevHash: boolean
   showCommitter: boolean
+  ignoreMergeCommit: boolean
   onlyUseMergeCommit: boolean
 }
 
@@ -52,15 +51,7 @@ export function getCommits(
   })
 
   return commits
-    .filter(c => {
-      if (options.ignoreMergeCommit) {
-        return !c.subject.startsWith(mergeCommitPrefix)
-      }
-      if (options.onlyUseMergeCommit) {
-        return c.subject.startsWith(mergeCommitPrefix)
-      }
-      return true
-    }).map(c => {
+    .map(c => {
       return {
         author: c.authorName,
         committer: c.committerName,
@@ -76,8 +67,16 @@ export function renderChangeLog(
   commits: Commit[],
   options: RenderOptions
 ): string {
-
-    const logs = commits.map(c => {
+  const logs = commits
+    .filter(c => {
+      if (options.ignoreMergeCommit) {
+        return !c.subject.startsWith(mergeCommitPrefix)
+      }
+      if (options.onlyUseMergeCommit) {
+        return c.subject.startsWith(mergeCommitPrefix)
+      }
+      return true
+    }).map(c => {
       let fields: string[] = ['*']
       if (options.showAbbrevHash) {
         fields.push(c.abbrevHash)
@@ -105,12 +104,21 @@ export function renderChangeLog(
 export function renderChangeJSON(
   fromTag: string,
   toTag: string,
-  commits: Commit[]
+  commits: Commit[],
+  options: RenderOptions
 ): string {
-  var changes = {
+  const changes = {
     fromTag: fromTag,
     toTag: toTag,
-    commits: commits,
+    commits: commits.filter(c => {
+      if (options.ignoreMergeCommit) {
+        return !c.subject.startsWith(mergeCommitPrefix)
+      }
+      if (options.onlyUseMergeCommit) {
+        return c.subject.startsWith(mergeCommitPrefix)
+      }
+      return true
+    }),
   }
 
   return JSON.stringify(changes, null, 4);

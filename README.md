@@ -48,24 +48,26 @@ jobs:
 
 ## Inputs
 
-| Name                            | Description                                                                     | Required | Default Value |
-|---------------------------------|---------------------------------------------------------------------------------|:--------:|:-------------:|
-| token                           | The GITHUB_TOKEN secret.                                                        |    yes   |               |
-| release_file                    | The path to the RELEASE file.                                                   |    no    |    RELEASE    |
-| body                            | The release body should be used. Empty means using an auto-generated changelog. |    no    |       ""      |
-| changelog_show_abbrev_hash      | Include abbreviated hash value in the changelog.                                |    no    |      true     |
-| changelog_show_committer        | Include committer name in the changelog.                                        |    no    |      true     |
-| changelog_only_use_merge_commit | Only use merge commits to generate changelog. Ignore all other commit kinds.    |    no    |     false     |
-| changelog_ignore_merge_commit   | Ignore merge commits from the changelog.                                        |    no    |     false     |
-| changelog_max_commits_number    | The maximum number of commits could be retrieved to generate changelog.         |    no    |      100      |
+| Name                            | Description                                                                            | Required | Default Value |
+|---------------------------------|----------------------------------------------------------------------------------------|:--------:|:-------------:|
+| token                           | The GITHUB_TOKEN secret.                                                               |    yes   |               |
+| release_file                    | The path to the RELEASE file.                                                          |    no    |    RELEASE    |
+| body                            | The release body should be used. Empty means using an auto-generated changelog.        |    no    |       ""      |
+| max_commits_number              | The maximum number of commits could be retrieved to generate changelog and changelist. |    no    |      100      |
+| changelog_show_abbrev_hash      | Include abbreviated hash value in the changelog.                                       |    no    |      true     |
+| changelog_show_committer        | Include committer name in the changelog.                                               |    no    |      true     |
+| changelog_only_use_merge_commit | Only use merge commits to generate changelog. Ignore all other commit kinds.           |    no    |     false     |
+| changelog_ignore_merge_commit   | Ignore merge commits from the changelog.                                               |    no    |     false     |
+| changelist_only_use_merge_commit| Only use merge commits to generate change list. Ignore all other commit kinds.         |    no    |     false     |
+| changelist_ignore_merge_commit  | Ignore merge commits from the change list.                                             |    no    |     false     |
 
 ## Outputs
 
-| Name        | Description                                          |
-|-------------|------------------------------------------------------|
-| id          | The ID of the created release.                       |
-| tag         | The tag name of the created release.                 |
-| html_url    | The HTML URL to view the created release.            |
-| upload_url  | The URL for uploading assets to the created release. |
-| changelog   | The generated changelog for the release.             |
-| change_json | The change list formatted in JSON.                   |
+| Name            | Description                                          |
+|-----------------|------------------------------------------------------|
+| id              | The ID of the created release.                       |
+| tag             | The tag name of the created release.                 |
+| html_url        | The HTML URL to view the created release.            |
+| upload_url      | The URL for uploading assets to the created release. |
+| changelog       | The generated changelog for the release.             |
+| changelist_json | The change list formatted in JSON.                   |
