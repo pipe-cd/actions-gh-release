@@ -1,5 +1,8 @@
 tag: v1.1.0
 
+commitInclude:
+  contains:
+    - app/hello
 commitExclude:
   prefixes:
     - "Merge pull request #"

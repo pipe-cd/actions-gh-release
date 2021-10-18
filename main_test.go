@@ -12,23 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import YAML from 'yaml'
-import {Git} from './git'
+package main
 
-export interface Config {
-  tag: string
-  title: string
-  commitish: string
-  body: string
-  prerelease: boolean
-}
+import (
+	"embed"
+)
 
-export async function loadConfig(
-  git: Git,
-  commit: string,
-  filePath: string
-): Promise<Config> {
-  const data = await git.readFile(commit, filePath)
-  const cfg: Config = YAML.parse(data)
-  return cfg
-}
+//go:embed testdata/*
+var testdata embed.FS
