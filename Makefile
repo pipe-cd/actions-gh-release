@@ -1,11 +1,11 @@
 .PHONY: build
 build:
-	npm run build && npm run package
+	go build -o gh-release .
 
 .PHONY: test
 test:
-	npm test
+	go test ./...
 
 .PHONY: dep
 dep:
-	npm install
+	go mod tidy
