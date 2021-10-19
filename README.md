@@ -136,6 +136,6 @@ commitInclude:
 tag: bar-v1.0.0
 
 commitInclude:
-  contains:
-    - application/bar
+  prefixes:
+    - "bar:"
 ```
