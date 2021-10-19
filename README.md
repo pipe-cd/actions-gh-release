@@ -69,7 +69,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v1
-      - uses: pipe-cd/actions-gh-release@v1.3.0
+      - uses: pipe-cd/actions-gh-release@v2.0.0
         with:
           release_file: '**/RELEASE'
           token: ${{ secrets.GITHUB_TOKEN }}
