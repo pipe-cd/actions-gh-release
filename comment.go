@@ -24,24 +24,37 @@ const (
 [![RELEASE](https://img.shields.io/static/v1?label=GitHub&message=RELEASE&color=success&style=flat)](https://github.com/pipe-cd/actions-gh-release)
 
 `
-	noReleaseTitleFormat = "This pull request does not touch any RELEASE files. It means no GitHub releases will be created once this pull request got merged.\n"
-	titleFormat          = "The following %d GitHub releases will be created once this pull request got merged.\n"
 )
 
-func makeCommentBody(proposals []ReleaseProposal) string {
+func makeCommentBody(proposals []ReleaseProposal, exists []ReleaseProposal) string {
 	var b strings.Builder
 	b.WriteString(successBadgeURL)
 
 	if len(proposals) == 0 {
-		fmt.Fprintf(&b, noReleaseTitleFormat)
+		if len(exists) == 0 {
+			fmt.Fprintf(&b, "No GitHub releases will be created one this pull request got merged. Because this pull request did not modified any RELEASE files.\n")
+			return b.String()
+		}
+
+		fmt.Fprintf(&b, "No GitHub releases will be created one this pull request got merged. Because the following tags were already created before.\n")
+		for _, p := range exists {
+			fmt.Fprintf(&b, "- %s\n", p.Tag)
+		}
 		return b.String()
 	}
 
-	b.WriteString(fmt.Sprintf(titleFormat, len(proposals)))
+	b.WriteString(fmt.Sprintf("The following %d GitHub releases will be created once this pull request got merged.\n", len(proposals)))
 	for _, p := range proposals {
 		fmt.Fprintf(&b, "\n")
 		fmt.Fprintf(&b, p.ReleaseNote)
 		fmt.Fprintf(&b, "\n")
+	}
+
+	if len(exists) > 0 {
+		fmt.Fprintf(&b, "The following %d releases will be skipped because they were already created before.\n")
+		for _, p := range exists {
+			fmt.Fprintf(&b, "- %s\n", p.Tag)
+		}
 	}
 
 	return b.String()

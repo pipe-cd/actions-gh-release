@@ -103,7 +103,10 @@ func main() {
 	}
 
 	// Filter all existing releases.
-	newProposals := make([]ReleaseProposal, 0, len(proposals))
+	var (
+		newProposals      = make([]ReleaseProposal, 0, len(proposals))
+		existingProposals = make([]ReleaseProposal, 0)
+	)
 	for _, p := range proposals {
 		if p.PreTag != "" {
 			exist, err := existRelease(ctx, ghClient, event.Owner, event.Repo, p.PreTag)
@@ -111,22 +114,25 @@ func main() {
 				log.Fatalf("Failed to check the existence of release for %s: %v\n", p.PreTag, err)
 			}
 			if exist {
+				existingProposals = append(existingProposals, p)
 				continue
 			}
 		}
 		newProposals = append(newProposals, p)
 	}
 
-	var (
-		beforeLen = len(proposals)
-		afterLen  = len(newProposals)
-	)
-	if afterLen != beforeLen {
-		if afterLen == 0 {
-			log.Printf("All of %d detected releases were already created before so no new release will be created\n", beforeLen)
+	notify := func() (*github.IssueComment, error) {
+		body := makeCommentBody(newProposals, existingProposals)
+		return sendComment(ctx, ghClient, event.Owner, event.Repo, event.PRNumber, body)
+	}
+
+	if len(existingProposals) != 0 {
+		if len(newProposals) == 0 {
+			log.Printf("All of %d detected releases were already created before so no new release will be created\n", len(proposals))
+			notify()
 			return
 		}
-		log.Printf("%d releases from %d detected ones were already created before so %d releases will be created\n", beforeLen-afterLen, beforeLen, afterLen)
+		log.Printf("%d releases from %d detected ones were already created before so only %d releases will be created\n", len(existingProposals), len(proposals), len(newProposals))
 	}
 
 	releasesJSON, err := json.Marshal(newProposals)
@@ -151,8 +157,7 @@ func main() {
 	}
 
 	// Otherwise, just leave a comment to show the changelogs.
-	body := makeCommentBody(newProposals)
-	comment, err := sendComment(ctx, ghClient, event.Owner, event.Repo, event.PRNumber, body)
+	comment, err := notify()
 	if err != nil {
 		log.Fatalf("Failed to send comment: %v\n", err)
 	}
