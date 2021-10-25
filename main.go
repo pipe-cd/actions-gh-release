@@ -108,10 +108,10 @@ func main() {
 		existingProposals = make([]ReleaseProposal, 0)
 	)
 	for _, p := range proposals {
-		if p.PreTag != "" {
-			exist, err := existRelease(ctx, ghClient, event.Owner, event.Repo, p.PreTag)
+		if p.Tag != "" {
+			exist, err := existRelease(ctx, ghClient, event.Owner, event.Repo, p.Tag)
 			if err != nil {
-				log.Fatalf("Failed to check the existence of release for %s: %v\n", p.PreTag, err)
+				log.Fatalf("Failed to check the existence of release for %s: %v\n", p.Tag, err)
 			}
 			if exist {
 				existingProposals = append(existingProposals, p)
