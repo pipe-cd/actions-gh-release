@@ -46,6 +46,12 @@ tag: v0.1.0                       # The tag number will be created. Required.
 #   showAbbrevHash: boolean       # Whether to include abbreviated hash value in release note. Default is false.
 #   showCommitter: boolean        # Whether to include committer in release note. Default is true.
 #   useReleaseNoteBlock: boolean  # Whether to use release note block instead of commit message. Default is false.
+#   commitExclude:                # Additional excludes applied while generating release note.
+#     prefixes: []string          # Matches if commit's subject is prefixed by one of the given values. Default is emtpy.
+#     contains: []string          # Matches if commit's body is containing one of the given values. Default is emtpy.
+#   commitInclude:                # Additional includes applied while generating release note.
+#     prefixes: []string          # Matches if commit's subject is prefixed by one of the given values. Default is emtpy.
+#     contains: []string          # Matches if commit's body is containing one of the given values. Default is emtpy.
 ```
 
 - Adding a new workflow (eg: `.github/workflows/gh-release.yaml`) with the content as below:
