@@ -51,7 +51,7 @@ func makeCommentBody(proposals []ReleaseProposal, exists []ReleaseProposal) stri
 	}
 
 	if len(exists) > 0 {
-		fmt.Fprintf(&b, "The following %d releases will be skipped because they were already created before.\n")
+		fmt.Fprintf(&b, "The following %d releases will be skipped because they were already created before.\n", len(exists))
 		for _, p := range exists {
 			fmt.Fprintf(&b, "- %s\n", p.Tag)
 		}
