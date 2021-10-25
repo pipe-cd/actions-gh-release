@@ -140,10 +140,10 @@ func createRelease(ctx context.Context, client *github.Client, owner, repo strin
 func existRelease(ctx context.Context, client *github.Client, owner, repo, tag string) (bool, error) {
 	_, resp, err := client.Repositories.GetReleaseByTag(ctx, owner, repo, tag)
 	if err != nil {
+		if resp != nil && resp.StatusCode == http.StatusNotFound {
+			return false, nil
+		}
 		return false, err
 	}
-	if resp.StatusCode == http.StatusNotFound {
-		return false, nil
-	}
-	return true, nil
+	return resp.StatusCode == http.StatusOK, nil
 }
