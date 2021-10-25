@@ -50,9 +50,11 @@ type ReleaseCommitCategoryConfig struct {
 }
 
 type ReleaseNoteGeneratorConfig struct {
-	ShowAbbrevHash      bool `json:"showAbbrevHash,omitempty" default:"false"`
-	ShowCommitter       bool `json:"showCommitter,omitempty" default:"true"`
-	UseReleaseNoteBlock bool `json:"useReleaseNoteBlock,omitempty" default:"false"`
+	ShowAbbrevHash      bool                       `json:"showAbbrevHash,omitempty" default:"false"`
+	ShowCommitter       bool                       `json:"showCommitter,omitempty" default:"true"`
+	UseReleaseNoteBlock bool                       `json:"useReleaseNoteBlock,omitempty" default:"false"`
+	CommitInclude       ReleaseCommitMatcherConfig `json:"commitInclude,omitempty"`
+	CommitExclude       ReleaseCommitMatcherConfig `json:"commitExclude,omitempty"`
 }
 
 type ReleaseCommitMatcherConfig struct {
@@ -253,9 +255,22 @@ func renderReleaseNote(p ReleaseProposal, cfg ReleaseConfig) []byte {
 		b.WriteString("\n")
 	}
 
+	filteredCommits := make([]ReleaseCommit, 0, len(p.Commits))
+	for _, c := range p.Commits {
+		// Exclude was specified and matched.
+		if !cfg.ReleaseNoteGenerator.CommitExclude.Empty() && cfg.ReleaseNoteGenerator.CommitExclude.Match(c.Commit) {
+			continue
+		}
+		// Include was specified and not matched.
+		if !cfg.ReleaseNoteGenerator.CommitInclude.Empty() && !cfg.ReleaseNoteGenerator.CommitInclude.Match(c.Commit) {
+			continue
+		}
+		filteredCommits = append(filteredCommits, c)
+	}
+
 	for _, ctg := range cfg.CommitCategories {
 		commits := make([]ReleaseCommit, 0, 0)
-		for _, c := range p.Commits {
+		for _, c := range filteredCommits {
 			if c.CategoryName == ctg.Id {
 				commits = append(commits, c)
 			}
@@ -270,7 +285,7 @@ func renderReleaseNote(p ReleaseProposal, cfg ReleaseConfig) []byte {
 		b.WriteString("\n")
 	}
 
-	for _, c := range p.Commits {
+	for _, c := range filteredCommits {
 		if c.CategoryName == "" {
 			renderCommit(c)
 		}
