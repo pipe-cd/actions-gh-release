@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"os"
 
 	"github.com/google/go-github/v39/github"
@@ -134,4 +135,15 @@ func createRelease(ctx context.Context, client *github.Client, owner, repo strin
 		Prerelease:      &p.Prerelease,
 	})
 	return release, err
+}
+
+func existRelease(ctx context.Context, client *github.Client, owner, repo, tag string) (bool, error) {
+	_, resp, err := client.Repositories.GetReleaseByTag(ctx, owner, repo, tag)
+	if err != nil {
+		return false, err
+	}
+	if resp.StatusCode == http.StatusNotFound {
+		return false, nil
+	}
+	return true, nil
 }
