@@ -102,7 +102,34 @@ func main() {
 		proposals = append(proposals, *p)
 	}
 
-	releasesJSON, err := json.Marshal(proposals)
+	// Filter all existing releases.
+	newProposals := make([]ReleaseProposal, 0, len(proposals))
+	for _, p := range proposals {
+		if p.PreTag != "" {
+			exist, err := existRelease(ctx, ghClient, event.Owner, event.Repo, p.PreTag)
+			if err != nil {
+				log.Fatalf("Failed to check the existence of release for %s: %v\n", p.PreTag, err)
+			}
+			if exist {
+				continue
+			}
+		}
+		newProposals = append(newProposals, p)
+	}
+
+	var (
+		beforeLen = len(proposals)
+		afterLen  = len(newProposals)
+	)
+	if afterLen != beforeLen {
+		if afterLen == 0 {
+			log.Printf("All of %d detected releases were already created before so no new release will be created\n", beforeLen)
+			return
+		}
+		log.Printf("%d releases from %d detected ones were already created before so %d releases will be created\n", beforeLen-afterLen, beforeLen, afterLen)
+	}
+
+	releasesJSON, err := json.Marshal(newProposals)
 	if err != nil {
 		log.Fatalf("Failed to marshal releases: %v\n", err)
 	}
@@ -110,8 +137,8 @@ func main() {
 
 	// Create GitHub releases if the event was push.
 	if event.Name == eventPush {
-		log.Printf("Will create %d GitHub releases\n", len(proposals))
-		for _, p := range proposals {
+		log.Printf("Will create %d GitHub releases\n", len(newProposals))
+		for _, p := range newProposals {
 			r, err := createRelease(ctx, ghClient, event.Owner, event.Repo, p)
 			if err != nil {
 				log.Fatalf("Failed to create release %s: %v\n", p.Tag, err)
@@ -119,12 +146,12 @@ func main() {
 			log.Printf("Successfully created a new GitHub release %s\n%s\n", r.GetTagName(), r.GetHTMLURL())
 		}
 
-		log.Printf("Successfully created all %d GitHub releases\n", len(proposals))
+		log.Printf("Successfully created all %d GitHub releases\n", len(newProposals))
 		return
 	}
 
 	// Otherwise, just leave a comment to show the changelogs.
-	body := makeCommentBody(proposals)
+	body := makeCommentBody(newProposals)
 	comment, err := sendComment(ctx, ghClient, event.Owner, event.Repo, event.PRNumber, body)
 	if err != nil {
 		log.Fatalf("Failed to send comment: %v\n", err)
