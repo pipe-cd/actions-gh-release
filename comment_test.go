@@ -25,6 +25,7 @@ func TestMakeCommentBody(t *testing.T) {
 	testcases := []struct {
 		name      string
 		proposals []ReleaseProposal
+		exists    []ReleaseProposal
 		expected  string
 	}{
 		{
@@ -56,7 +57,7 @@ func TestMakeCommentBody(t *testing.T) {
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := makeCommentBody(tc.proposals)
+			got := makeCommentBody(tc.proposals, tc.exists)
 			expected, err := testdata.ReadFile(tc.expected)
 			require.NoError(t, err)
 
