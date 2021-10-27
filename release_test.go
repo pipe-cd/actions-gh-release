@@ -39,6 +39,7 @@ func TestParseReleaseConfig(t *testing.T) {
 			configFile: "testdata/valid-config.txt",
 			expected: &ReleaseConfig{
 				Tag: "v1.1.0",
+				Name: "hello",
 				CommitInclude: ReleaseCommitMatcherConfig{
 					Contains: []string{
 						"app/hello",
@@ -100,6 +101,7 @@ func TestParseReleaseConfig(t *testing.T) {
 func TestBuildReleaseCommits(t *testing.T) {
 	config := ReleaseConfig{
 		Tag: "v1.1.0",
+		Name: "hello",
 		CommitInclude: ReleaseCommitMatcherConfig{
 			Contains: []string{
 				"app/hello",

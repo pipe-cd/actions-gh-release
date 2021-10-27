@@ -31,6 +31,7 @@ var (
 
 type ReleaseConfig struct {
 	Tag             string `json:"tag,omitempty"`
+	Name            string `json:"name,omitempty"`
 	Title           string `json:"title,omitempty"`
 	TargetCommitish string `json:"targetCommitish,omitempty"`
 	ReleaseNote     string `json:"releaseNote,omitempty"`
@@ -115,6 +116,7 @@ func parseReleaseConfig(data []byte) (*ReleaseConfig, error) {
 
 type ReleaseProposal struct {
 	Tag             string `json:"tag,omitempty"`
+	Name            string `json:"name,omitempty"`
 	Title           string `json:"title,omitempty"`
 	TargetCommitish string `json:"targetCommitish,omitempty"`
 	ReleaseNote     string `json:"releaseNote,omitempty"`
@@ -163,6 +165,7 @@ func buildReleaseProposal(ctx context.Context, releaseFile string, gitExecPath, 
 	releaseCommits := buildReleaseCommits(commits, *headCfg)
 	p := ReleaseProposal{
 		Tag:             headCfg.Tag,
+		Name:            headCfg.Name,
 		Title:           headCfg.Title,
 		TargetCommitish: headCfg.TargetCommitish,
 		ReleaseNote:     headCfg.ReleaseNote,
