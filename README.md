@@ -13,7 +13,8 @@ tag: v0.1.0                       # The tag number will be created. Required.
 
 # # Optional fields:
 #
-# title: string                   # The release tile. Default is "Release ${tag}".
+# name: string                    # The release name. Default is empty.
+# title: string                   # The release title. Default is "Release ${tag}".
 # targetCommitish: string         # The release commitish. Default is the merged commit.
 # releaseNote: string             # The release body. Default is the auto-generated release note.
 # prerelease: bool                # True if this is a prerelease. Default is false.
@@ -132,6 +133,7 @@ releaseNoteGenerator:
 
 ``` yaml
 tag: foo-v0.1.0
+name: foo
 
 commitInclude:
   contains:
