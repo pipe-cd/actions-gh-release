@@ -141,7 +141,7 @@ func main() {
 	}
 	fmt.Printf("::set-output name=releases::%s\n", string(releasesJSON))
 	if args.OutputReleasesFilePath != "" {
-		if err := os.WriteFile(args.OutputReleasesFilePath, releasesJSON, 0666); err != nil {
+		if err := os.WriteFile(args.OutputReleasesFilePath, releasesJSON, 0644); err != nil {
 			log.Fatalf("Failed to write releases json to %s: %v\n", args.OutputReleasesFilePath, err)
 		}
 		log.Printf("Successfully writed releases json to %s\n", args.OutputReleasesFilePath)
