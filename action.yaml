@@ -13,6 +13,9 @@ inputs:
   token:
     description: 'The GITHUB_TOKEN secret.'
     required: true
+  output_releases_file_path:
+    description: 'The path to output the list of releases formatted in JSON.'
+    required: false
 
 outputs:
   releases:
@@ -24,3 +27,4 @@ runs:
   args:
     - release-file=${{ inputs.release_file }}
     - token=${{ inputs.token }}
+    - output-releases-file-path=${{ inputs.output_releases_file_path }}

@@ -140,6 +140,12 @@ func main() {
 		log.Fatalf("Failed to marshal releases: %v\n", err)
 	}
 	fmt.Printf("::set-output name=releases::%s\n", string(releasesJSON))
+	if args.OutputReleasesFilePath != "" {
+		if err := os.WriteFile(args.OutputReleasesFilePath, releasesJSON, 0644); err != nil {
+			log.Fatalf("Failed to write releases JSON to %s: %v\n", args.OutputReleasesFilePath, err)
+		}
+		log.Printf("Successfully wrote releases JSON to %s\n", args.OutputReleasesFilePath)
+	}
 
 	// Create GitHub releases if the event was push.
 	if event.Name == eventPush {
@@ -166,8 +172,9 @@ func main() {
 }
 
 type arguments struct {
-	ReleaseFile string
-	Token       string
+	ReleaseFile            string
+	Token                  string
+	OutputReleasesFilePath string
 }
 
 func parseArgs(args []string) (arguments, error) {
@@ -183,6 +190,8 @@ func parseArgs(args []string) (arguments, error) {
 			out.ReleaseFile = ps[1]
 		case "token":
 			out.Token = ps[1]
+		case "output-releases-file-path":
+			out.OutputReleasesFilePath = ps[1]
 		}
 	}
 

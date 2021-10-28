@@ -88,6 +88,7 @@ jobs:
 |-----------------------|-----------------------------------------------------------------------------------|:--------:|:-------------:|
 | token                 | The GITHUB_TOKEN secret.                                                          |    yes   |               |
 | release_file          | The path to the RELEASE file or pattern to match one or multiple RELEASE files.   |    no    |    RELEASE    |
+| output_releases_file  | The path to output the list of releases formatted in JSON.                        |    no    |               |
 
 ## Outputs
 
