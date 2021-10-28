@@ -144,7 +144,7 @@ func main() {
 		if err := os.WriteFile(args.OutputReleasesFilePath, releasesJSON, 0644); err != nil {
 			log.Fatalf("Failed to write releases json to %s: %v\n", args.OutputReleasesFilePath, err)
 		}
-		log.Printf("Successfully writed releases json to %s\n", args.OutputReleasesFilePath)
+		log.Printf("Successfully wrote releases JSON to %s\n", args.OutputReleasesFilePath)
 	}
 
 	// Create GitHub releases if the event was push.
