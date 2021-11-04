@@ -30,12 +30,13 @@ var (
 )
 
 type ReleaseConfig struct {
-	Tag             string `json:"tag,omitempty"`
-	Name            string `json:"name,omitempty"`
-	Title           string `json:"title,omitempty"`
-	TargetCommitish string `json:"targetCommitish,omitempty"`
-	ReleaseNote     string `json:"releaseNote,omitempty"`
-	Prerelease      bool   `json:"prerelease,omitempty"`
+	Tag               string `json:"tag,omitempty"`
+	Name              string `json:"name,omitempty"`
+	Title             string `json:"title,omitempty"`
+	TargetCommitish   string `json:"targetCommitish,omitempty"`
+	ReleaseNote       string `json:"releaseNote,omitempty"`
+	Prerelease        bool   `json:"prerelease,omitempty"`
+	ExpandMergeCommit bool   `json:"expandMergeCommit,omitempty"`
 
 	CommitInclude ReleaseCommitMatcherConfig `json:"commitInclude,omitempty"`
 	CommitExclude ReleaseCommitMatcherConfig `json:"commitExclude,omitempty"`
@@ -193,9 +194,13 @@ func buildReleaseProposal(ctx context.Context, releaseFile string, gitExecPath, 
 }
 
 func buildReleaseCommits(commits []Commit, cfg ReleaseConfig) []ReleaseCommit {
+	add := make(map[string]struct{}, len(commits))
 	out := make([]ReleaseCommit, 0, len(commits))
+	hashes := make(map[string]Commit, len(commits))
 
 	for _, commit := range commits {
+		hashes[commit.Hash] = commit
+
 		// Exclude was specified and matched.
 		if !cfg.CommitExclude.Empty() && cfg.CommitExclude.Match(commit) {
 			continue
@@ -210,7 +215,39 @@ func buildReleaseCommits(commits []Commit, cfg ReleaseConfig) []ReleaseCommit {
 			ReleaseNote:  determineCommitReleaseNote(commit, cfg.ReleaseNoteGenerator.UseReleaseNoteBlock),
 			CategoryName: determineCommitCategory(commit, cfg.CommitCategories),
 		}
+		add[c.Hash] = struct{}{}
 		out = append(out, c)
+	}
+
+	if cfg.ExpandMergeCommit {
+		for _, c := range out {
+			if !c.IsMerge() {
+				continue
+			}
+			cursor, finish := c.ParentHashes[1], c.ParentHashes[0]
+			for {
+				parent, ok := hashes[cursor]
+				if !ok {
+					break
+				}
+				if parent.Hash == finish {
+					break
+				}
+				if len(parent.ParentHashes) != 1 {
+					break
+				}
+				if _, ok := add[cursor]; !ok {
+					pc := ReleaseCommit{
+						Commit:       parent,
+						ReleaseNote:  determineCommitReleaseNote(parent, cfg.ReleaseNoteGenerator.UseReleaseNoteBlock),
+						CategoryName: determineCommitCategory(c.Commit, cfg.CommitCategories), // use merge commit
+					}
+					add[parent.Hash] = struct{}{}
+					out = append(out, pc)
+				}
+				cursor = parent.ParentHashes[0]
+			}
+		}
 	}
 
 	return out
