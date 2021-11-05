@@ -194,9 +194,9 @@ func buildReleaseProposal(ctx context.Context, releaseFile string, gitExecPath, 
 }
 
 func buildReleaseCommits(commits []Commit, cfg ReleaseConfig) []ReleaseCommit {
-	add := make(map[string]struct{}, len(commits))
 	out := make([]ReleaseCommit, 0, len(commits))
 	hashes := make(map[string]Commit, len(commits))
+	matchedHashes := make(map[string]struct{}, len(commits))
 
 	for _, commit := range commits {
 		hashes[commit.Hash] = commit
@@ -215,7 +215,7 @@ func buildReleaseCommits(commits []Commit, cfg ReleaseConfig) []ReleaseCommit {
 			ReleaseNote:  determineCommitReleaseNote(commit, cfg.ReleaseNoteGenerator.UseReleaseNoteBlock),
 			CategoryName: determineCommitCategory(commit, cfg.CommitCategories),
 		}
-		add[c.Hash] = struct{}{}
+		matchedHashes[c.Hash] = struct{}{}
 		out = append(out, c)
 	}
 
@@ -236,13 +236,13 @@ func buildReleaseCommits(commits []Commit, cfg ReleaseConfig) []ReleaseCommit {
 				if len(parent.ParentHashes) != 1 {
 					break
 				}
-				if _, ok := add[cursor]; !ok {
+				if _, ok := matchedHashes[cursor]; !ok {
 					pc := ReleaseCommit{
 						Commit:       parent,
 						ReleaseNote:  determineCommitReleaseNote(parent, cfg.ReleaseNoteGenerator.UseReleaseNoteBlock),
 						CategoryName: determineCommitCategory(c.Commit, cfg.CommitCategories), // use merge commit
 					}
-					add[parent.Hash] = struct{}{}
+					matchedHashes[parent.Hash] = struct{}{}
 					out = append(out, pc)
 				}
 				cursor = parent.ParentHashes[0]
