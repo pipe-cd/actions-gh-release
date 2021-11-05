@@ -217,7 +217,7 @@ func TestBuildReleaseCommits(t *testing.T) {
 			},
 		},
 		{
-			name: "expand merge commit",
+			name: "Add include condition: parent of merge commit",
 			commits: []Commit{
 				{
 					Hash:         "a",
@@ -251,10 +251,30 @@ func TestBuildReleaseCommits(t *testing.T) {
 				},
 			},
 			config: func(base ReleaseConfig) ReleaseConfig {
-				base.ExpandMergeCommit = true
+				base.CommitInclude.ParentOfMergeCommit = true
 				return base
 			}(config),
 			expected: []ReleaseCommit{
+				{
+					Commit: Commit{
+						Hash:         "a",
+						ParentHashes: []string{"z"},
+						Subject:      "Commit 1 message",
+						Body:         "commit 1",
+					},
+					CategoryName: "internal-change",
+					ReleaseNote:  "Commit 1 message",
+				},
+				{
+					Commit: Commit{
+						Hash:         "b",
+						ParentHashes: []string{"a"},
+						Subject:      "Commit 2 message",
+						Body:         "commit 2",
+					},
+					CategoryName: "internal-change",
+					ReleaseNote:  "Commit 2 message",
+				},
 				{
 					Commit: Commit{
 						Hash:         "c",
@@ -264,26 +284,6 @@ func TestBuildReleaseCommits(t *testing.T) {
 					},
 					CategoryName: "notable-change",
 					ReleaseNote:  "Commit 3 message",
-				},
-				{
-					Commit: Commit{
-						Hash:         "b",
-						ParentHashes: []string{"a"},
-						Subject:      "Commit 2 message",
-						Body:         "commit 2",
-					},
-					CategoryName: "notable-change",
-					ReleaseNote:  "Commit 2 message",
-				},
-				{
-					Commit: Commit{
-						Hash:         "a",
-						ParentHashes: []string{"z"},
-						Subject:      "Commit 1 message",
-						Body:         "commit 1",
-					},
-					CategoryName: "notable-change",
-					ReleaseNote:  "Commit 1 message",
 				},
 			},
 		},

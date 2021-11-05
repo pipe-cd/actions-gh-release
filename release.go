@@ -30,13 +30,12 @@ var (
 )
 
 type ReleaseConfig struct {
-	Tag               string `json:"tag,omitempty"`
-	Name              string `json:"name,omitempty"`
-	Title             string `json:"title,omitempty"`
-	TargetCommitish   string `json:"targetCommitish,omitempty"`
-	ReleaseNote       string `json:"releaseNote,omitempty"`
-	Prerelease        bool   `json:"prerelease,omitempty"`
-	ExpandMergeCommit bool   `json:"expandMergeCommit,omitempty"`
+	Tag             string `json:"tag,omitempty"`
+	Name            string `json:"name,omitempty"`
+	Title           string `json:"title,omitempty"`
+	TargetCommitish string `json:"targetCommitish,omitempty"`
+	ReleaseNote     string `json:"releaseNote,omitempty"`
+	Prerelease      bool   `json:"prerelease,omitempty"`
 
 	CommitInclude ReleaseCommitMatcherConfig `json:"commitInclude,omitempty"`
 	CommitExclude ReleaseCommitMatcherConfig `json:"commitExclude,omitempty"`
@@ -60,15 +59,21 @@ type ReleaseNoteGeneratorConfig struct {
 }
 
 type ReleaseCommitMatcherConfig struct {
-	Prefixes []string `json:"prefixes,omitemtpy"`
-	Contains []string `json:"contains,omitempty"`
+	ParentOfMergeCommit bool     `json:"parentOfMergeCommit,omitempty"`
+	Prefixes            []string `json:"prefixes,omitemtpy"`
+	Contains            []string `json:"contains,omitempty"`
 }
 
 func (c ReleaseCommitMatcherConfig) Empty() bool {
 	return len(c.Prefixes)+len(c.Contains) == 0
 }
 
-func (c ReleaseCommitMatcherConfig) Match(commit Commit) bool {
+func (c ReleaseCommitMatcherConfig) Match(commit Commit, mergeCommit *Commit) bool {
+	if c.ParentOfMergeCommit && mergeCommit != nil {
+		if c.Match(*mergeCommit, nil) {
+			return true
+		}
+	}
 	for _, s := range c.Prefixes {
 		if strings.HasPrefix(commit.Subject, s) {
 			return true
@@ -194,62 +199,54 @@ func buildReleaseProposal(ctx context.Context, releaseFile string, gitExecPath, 
 }
 
 func buildReleaseCommits(commits []Commit, cfg ReleaseConfig) []ReleaseCommit {
-	out := make([]ReleaseCommit, 0, len(commits))
 	hashes := make(map[string]Commit, len(commits))
-	matchedHashes := make(map[string]struct{}, len(commits))
-
 	for _, commit := range commits {
 		hashes[commit.Hash] = commit
+	}
 
-		// Exclude was specified and matched.
-		if !cfg.CommitExclude.Empty() && cfg.CommitExclude.Match(commit) {
+	mergeCommits := make(map[string]*Commit, len(commits))
+	for i := range commits {
+		commit := commits[i]
+		if !commit.IsMerge() {
 			continue
 		}
+		cursor, finish := commit.ParentHashes[1], commit.ParentHashes[0]
+		for {
+			parent, ok := hashes[cursor]
+			if !ok {
+				break
+			}
+			if parent.Hash == finish {
+				break
+			}
+			if len(parent.ParentHashes) != 1 {
+				break
+			}
+			mergeCommits[cursor] = &commit
+			cursor = parent.ParentHashes[0]
+		}
+	}
+
+	out := make([]ReleaseCommit, 0, len(commits))
+	for _, commit := range commits {
+
+		// Exclude was specified and matched.
+		if !cfg.CommitExclude.Empty() && cfg.CommitExclude.Match(commit, mergeCommits[commit.Hash]) {
+			continue
+		}
+
 		// Include was specified and not matched.
-		if !cfg.CommitInclude.Empty() && !cfg.CommitInclude.Match(commit) {
+		if !cfg.CommitInclude.Empty() && !cfg.CommitInclude.Match(commit, mergeCommits[commit.Hash]) {
 			continue
 		}
 
 		c := ReleaseCommit{
 			Commit:       commit,
 			ReleaseNote:  determineCommitReleaseNote(commit, cfg.ReleaseNoteGenerator.UseReleaseNoteBlock),
-			CategoryName: determineCommitCategory(commit, cfg.CommitCategories),
+			CategoryName: determineCommitCategory(commit, mergeCommits[commit.Hash], cfg.CommitCategories),
 		}
-		matchedHashes[c.Hash] = struct{}{}
 		out = append(out, c)
 	}
-
-	if cfg.ExpandMergeCommit {
-		for _, c := range out {
-			if !c.IsMerge() {
-				continue
-			}
-			cursor, finish := c.ParentHashes[1], c.ParentHashes[0]
-			for {
-				parent, ok := hashes[cursor]
-				if !ok {
-					break
-				}
-				if parent.Hash == finish {
-					break
-				}
-				if len(parent.ParentHashes) != 1 {
-					break
-				}
-				if _, ok := matchedHashes[cursor]; !ok {
-					pc := ReleaseCommit{
-						Commit:       parent,
-						ReleaseNote:  determineCommitReleaseNote(parent, cfg.ReleaseNoteGenerator.UseReleaseNoteBlock),
-						CategoryName: determineCommitCategory(c.Commit, cfg.CommitCategories), // use merge commit
-					}
-					matchedHashes[parent.Hash] = struct{}{}
-					out = append(out, pc)
-				}
-				cursor = parent.ParentHashes[0]
-			}
-		}
-	}
-
 	return out
 }
 
@@ -268,12 +265,12 @@ func determineCommitReleaseNote(c Commit, useReleaseNoteBlock bool) string {
 	return c.Subject
 }
 
-func determineCommitCategory(commit Commit, categories []ReleaseCommitCategoryConfig) string {
+func determineCommitCategory(commit Commit, mergeCommit *Commit, categories []ReleaseCommitCategoryConfig) string {
 	for _, c := range categories {
 		if c.ReleaseCommitMatcherConfig.Empty() {
 			return c.Id
 		}
-		if c.ReleaseCommitMatcherConfig.Match(commit) {
+		if c.ReleaseCommitMatcherConfig.Match(commit, mergeCommit) {
 			return c.Id
 		}
 	}
@@ -295,14 +292,42 @@ func renderReleaseNote(p ReleaseProposal, cfg ReleaseConfig) []byte {
 		b.WriteString("\n")
 	}
 
+	hashes := make(map[string]Commit, len(p.Commits))
+	for _, commit := range p.Commits {
+		hashes[commit.Hash] = commit.Commit
+	}
+
+	mergeCommits := make(map[string]*Commit, len(p.Commits))
+	for i := range p.Commits {
+		commit := p.Commits[i]
+		if !commit.IsMerge() {
+			continue
+		}
+		cursor, finish := commit.ParentHashes[1], commit.ParentHashes[0]
+		for {
+			parent, ok := hashes[cursor]
+			if !ok {
+				break
+			}
+			if parent.Hash == finish {
+				break
+			}
+			if len(parent.ParentHashes) != 1 {
+				break
+			}
+			mergeCommits[cursor] = &commit.Commit
+			cursor = parent.ParentHashes[0]
+		}
+	}
+
 	filteredCommits := make([]ReleaseCommit, 0, len(p.Commits))
 	for _, c := range p.Commits {
 		// Exclude was specified and matched.
-		if !cfg.ReleaseNoteGenerator.CommitExclude.Empty() && cfg.ReleaseNoteGenerator.CommitExclude.Match(c.Commit) {
+		if !cfg.ReleaseNoteGenerator.CommitExclude.Empty() && cfg.ReleaseNoteGenerator.CommitExclude.Match(c.Commit, mergeCommits[c.Hash]) {
 			continue
 		}
 		// Include was specified and not matched.
-		if !cfg.ReleaseNoteGenerator.CommitInclude.Empty() && !cfg.ReleaseNoteGenerator.CommitInclude.Match(c.Commit) {
+		if !cfg.ReleaseNoteGenerator.CommitInclude.Empty() && !cfg.ReleaseNoteGenerator.CommitInclude.Match(c.Commit, mergeCommits[c.Hash]) {
 			continue
 		}
 		filteredCommits = append(filteredCommits, c)
