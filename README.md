@@ -18,6 +18,7 @@ tag: v0.1.0                       # The tag number will be created. Required.
 # targetCommitish: string         # The release commitish. Default is the merged commit.
 # releaseNote: string             # The release body. Default is the auto-generated release note.
 # prerelease: bool                # True if this is a prerelease. Default is false.
+# expandMergeCommit: bool         # True is expand merge commit. Default is false.
 #
 #
 # # If specified, all matching commits will be excluded from release. Empty means excluding nothing.
@@ -25,6 +26,7 @@ tag: v0.1.0                       # The tag number will be created. Required.
 # commitExclude:
 #   prefixes: []string            # Matches if commit's subject is prefixed by one of the given values. Default is emtpy.
 #   contains: []string            # Matches if commit's body is containing one of the given values. Default is emtpy.
+#
 #
 # # If specified, all matching commits will be included to release. Empty means including alls.
 #
@@ -138,13 +140,30 @@ name: foo
 
 commitInclude:
   contains:
-    - application/foo
+    - "application/foo"
+
+releaseNoteGenerator:
+  showAbbrevHash: true
+  showCommitter: true
+  useReleaseNoteBlock: true
 ```
+
+- Multiple RELEASE files for mono-repo style (Include commits that have expanded merge commit in `outoputs.releases`.)
 
 ``` yaml
 tag: bar-v1.0.0
+name: bar
 
+expandMergeCommit: true
 commitInclude:
   prefixes:
     - "bar:"
+
+releaseNoteGenerator:
+  showAbbrevHash: true
+  showCommitter: true
+  useReleaseNoteBlock: true
+  commitInclude:
+    prefixes:
+      - "bar:"
 ```
