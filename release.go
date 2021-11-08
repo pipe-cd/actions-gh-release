@@ -60,7 +60,7 @@ type ReleaseNoteGeneratorConfig struct {
 
 type ReleaseCommitMatcherConfig struct {
 	ParentOfMergeCommit bool     `json:"parentOfMergeCommit,omitempty"`
-	Prefixes            []string `json:"prefixes,omitemtpy"`
+	Prefixes            []string `json:"prefixes,omitempty"`
 	Contains            []string `json:"contains,omitempty"`
 }
 
