@@ -23,12 +23,15 @@ tag: v0.1.0                       # The tag number will be created. Required.
 # # If specified, all matching commits will be excluded from release. Empty means excluding nothing.
 #
 # commitExclude:
+#   parentOfMergeCommit: bool     # True is whether the commit is the parent commit of the matching merge commit. Default is false.
 #   prefixes: []string            # Matches if commit's subject is prefixed by one of the given values. Default is emtpy.
 #   contains: []string            # Matches if commit's body is containing one of the given values. Default is emtpy.
+#
 #
 # # If specified, all matching commits will be included to release. Empty means including alls.
 #
 # commitInclude:
+#   parentOfMergeCommit: bool     # True is whether the commit is the parent commit of the matching merge commit. Default is false.
 #   prefixes: []string            # Matches if commit's subject is prefixed by one of the given values. Default is emtpy.
 #   contains: []string            # Matches if commit's body is containing one of the given values. Default is emtpy.
 #
@@ -37,6 +40,7 @@ tag: v0.1.0                       # The tag number will be created. Required.
 #
 # commitCategories:
 #   - title: string               # Category title.
+#     parentOfMergeCommit: bool   # True is whether the commit is the parent commit of the matching merge commit. Default is false.
 #     contains: []string          # Matches if commit's subject is prefixed by one of the given values. Default is emtpy.
 #     prefixes: []string          # Matches if commit's body is containing one of the given values. Default is emtpy.
 #
@@ -48,9 +52,11 @@ tag: v0.1.0                       # The tag number will be created. Required.
 #   showCommitter: boolean        # Whether to include committer in release note. Default is true.
 #   useReleaseNoteBlock: boolean  # Whether to use release note block instead of commit message. Default is false.
 #   commitExclude:                # Additional excludes applied while generating release note.
+#     parentOfMergeCommit: bool   # True is whether the commit is the parent commit of the matching merge commit. Default is false.
 #     prefixes: []string          # Matches if commit's subject is prefixed by one of the given values. Default is emtpy.
 #     contains: []string          # Matches if commit's body is containing one of the given values. Default is emtpy.
 #   commitInclude:                # Additional includes applied while generating release note.
+#     parentOfMergeCommit: bool   # True is whether the commit is the parent commit of the matching merge commit. Default is false.
 #     prefixes: []string          # Matches if commit's subject is prefixed by one of the given values. Default is emtpy.
 #     contains: []string          # Matches if commit's body is containing one of the given values. Default is emtpy.
 ```
@@ -138,13 +144,31 @@ name: foo
 
 commitInclude:
   contains:
-    - application/foo
+    - "application/foo"
+
+releaseNoteGenerator:
+  showAbbrevHash: true
+  showCommitter: true
+  useReleaseNoteBlock: true
 ```
+
+- Multiple RELEASE files for mono-repo style (Include parent commits of the matching merge commit in `outoputs.release`)
+
 
 ``` yaml
 tag: bar-v1.0.0
+name: bar
 
 commitInclude:
+  parentOfMergeCommit: true
   prefixes:
     - "bar:"
+
+releaseNoteGenerator:
+  showAbbrevHash: true
+  showCommitter: true
+  useReleaseNoteBlock: true
+  commitInclude:
+    prefixes:
+      - "bar:"
 ```

@@ -29,20 +29,24 @@ func TestParseCommit(t *testing.T) {
 
 	expected := []Commit{
 		{
-			Author:          "nghialv",
-			Committer:       "kapetanios-robot",
-			CreatedAt:       1565752022,
-			Hash:            "74e20ede0242fdc7fd75b5be56e8d7fa72060707",
-			AbbreviatedHash: "74e20ed",
-			Subject:         "wip",
+			Author:                  "nghialv",
+			Committer:               "kapetanios-robot",
+			CreatedAt:               1565752022,
+			Hash:                    "74e20ede0242fdc7fd75b5be56e8d7fa72060707",
+			AbbreviatedHash:         "74e20ed",
+			ParentHashes:            []string{"ea8674c36467fc4d5a2e7900fa47e6c0d7b40948"},
+			AbbreviatedParentHashes: []string{"ea8674c"},
+			Subject:                 "wip",
 		},
 		{
-			Author:          "Le Van Nghia",
-			Committer:       "kapetanios-robot",
-			CreatedAt:       1565749682,
-			Hash:            "c9a7596e7e92ea5e3f03eeb951f632acb02b88a3",
-			AbbreviatedHash: "c9a7596",
-			Subject:         `Add implementation of inplug service (#648)`,
+			Author:                  "Le Van Nghia",
+			Committer:               "kapetanios-robot",
+			CreatedAt:               1565749682,
+			Hash:                    "c9a7596e7e92ea5e3f03eeb951f632acb02b88a3",
+			AbbreviatedHash:         "c9a7596",
+			ParentHashes:            []string{"74e20ede0242fdc7fd75b5be56e8d7fa72060707"},
+			AbbreviatedParentHashes: []string{"74e20ed"},
+			Subject:                 `Add implementation of inplug service (#648)`,
 			Body: `**What this PR does / why we need it**:
 
 **Which issue(s) this PR fixes**:
@@ -60,12 +64,14 @@ NONE
 This PR was merged by Kapetanios.`,
 		},
 		{
-			Author:          "nghialv",
-			Committer:       "kapetanios-robot",
-			CreatedAt:       2565752022,
-			Hash:            "24e20ede0242fdc7fd75b5be56e8d7fa72060707",
-			AbbreviatedHash: "24e20ed",
-			Subject:         `Added commands to "kapectl" for creating, updating project secret (#475)`,
+			Author:                  "nghialv",
+			Committer:               "kapetanios-robot",
+			CreatedAt:               2565752022,
+			Hash:                    "24e20ede0242fdc7fd75b5be56e8d7fa72060707",
+			AbbreviatedHash:         "24e20ed",
+			ParentHashes:            []string{"74e20ede0242fdc7fd75b5be56e8d7fa72060707", "c9a7596e7e92ea5e3f03eeb951f632acb02b88a3"},
+			AbbreviatedParentHashes: []string{"74e20ed", "c9a7596"},
+			Subject:                 `Added commands to "kapectl" for creating, updating project secret (#475)`,
 		},
 	}
 	commits, err := parseCommits(string(log))

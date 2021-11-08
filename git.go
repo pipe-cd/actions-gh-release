@@ -26,25 +26,33 @@ import (
 const (
 	separator       = "__GIT_LOG_SEPARATOR__"
 	delimiter       = "__GIT_LOG_DELIMITER__"
-	fieldNum        = 7
+	fieldNum        = 9
 	commitLogFormat = separator +
-		"%an" + delimiter +
-		"%cn" + delimiter +
-		"%at" + delimiter +
-		"%H" + delimiter +
-		"%h" + delimiter +
-		"%s" + delimiter +
-		"%b"
+		"%an" + delimiter + // author name
+		"%cn" + delimiter + // committer name
+		"%at" + delimiter + // author date (UNIX timestamp)
+		"%H" + delimiter + // commit hash
+		"%h" + delimiter + // abbreviated commit hash
+		"%P" + delimiter + // parent hashes
+		"%p" + delimiter + // abbreviated parent hashes
+		"%s" + delimiter + // subject
+		"%b" // body
 )
 
 type Commit struct {
-	Author          string `json:"author,omitempty"`
-	Committer       string `json:"committer,omitempty"`
-	CreatedAt       int    `json:"createdAt,omitempty"`
-	Hash            string `json:"hash,omitempty"`
-	AbbreviatedHash string `json:"abbreviatedHash,omitempty"`
-	Subject         string `json:"subject,omitempty"`
-	Body            string `json:"body,omitempty"`
+	Author                  string   `json:"author,omitempty"`
+	Committer               string   `json:"committer,omitempty"`
+	CreatedAt               int      `json:"createdAt,omitempty"`
+	Hash                    string   `json:"hash,omitempty"`
+	AbbreviatedHash         string   `json:"abbreviatedHash,omitempty"`
+	ParentHashes            []string `json:"parentHashes,omitempty"`
+	AbbreviatedParentHashes []string `json:"abbreviatedParentHashes,omitempty"`
+	Subject                 string   `json:"subject,omitempty"`
+	Body                    string   `json:"body,omitempty"`
+}
+
+func (c Commit) IsMerge() bool {
+	return len(c.ParentHashes) == 2
 }
 
 func parseCommits(log string) ([]Commit, error) {
@@ -73,13 +81,15 @@ func parseCommit(log string) (Commit, error) {
 		return Commit{}, err
 	}
 	return Commit{
-		Author:          fields[0],
-		Committer:       fields[1],
-		CreatedAt:       createdAt,
-		Hash:            fields[3],
-		AbbreviatedHash: fields[4],
-		Subject:         fields[5],
-		Body:            strings.TrimSpace(fields[6]),
+		Author:                  fields[0],
+		Committer:               fields[1],
+		CreatedAt:               createdAt,
+		Hash:                    fields[3],
+		AbbreviatedHash:         fields[4],
+		ParentHashes:            strings.Split(fields[5], " "),
+		AbbreviatedParentHashes: strings.Split(fields[6], " "),
+		Subject:                 fields[7],
+		Body:                    strings.TrimSpace(fields[8]),
 	}, nil
 }
 

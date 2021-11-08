@@ -38,7 +38,7 @@ func TestParseReleaseConfig(t *testing.T) {
 			name:       "valid config",
 			configFile: "testdata/valid-config.txt",
 			expected: &ReleaseConfig{
-				Tag: "v1.1.0",
+				Tag:  "v1.1.0",
 				Name: "hello",
 				CommitInclude: ReleaseCommitMatcherConfig{
 					Contains: []string{
@@ -100,7 +100,7 @@ func TestParseReleaseConfig(t *testing.T) {
 
 func TestBuildReleaseCommits(t *testing.T) {
 	config := ReleaseConfig{
-		Tag: "v1.1.0",
+		Tag:  "v1.1.0",
 		Name: "hello",
 		CommitInclude: ReleaseCommitMatcherConfig{
 			Contains: []string{
@@ -213,6 +213,77 @@ func TestBuildReleaseCommits(t *testing.T) {
 					},
 					CategoryName: "notable-change",
 					ReleaseNote:  "Commit 4 release note",
+				},
+			},
+		},
+		{
+			name: "Add include condition: parent of merge commit",
+			commits: []Commit{
+				{
+					Hash:         "a",
+					ParentHashes: []string{"z"},
+					Subject:      "Commit 1 message",
+					Body:         "commit 1",
+				},
+				{
+					Hash:         "b",
+					ParentHashes: []string{"a"},
+					Subject:      "Commit 2 message",
+					Body:         "commit 2",
+				},
+				{
+					Hash:         "c",
+					ParentHashes: []string{"z", "b"},
+					Subject:      "Commit 3 message",
+					Body:         "commit 3\napp/hello\n- change-category/notable-change",
+				},
+				{
+					Hash:         "d",
+					ParentHashes: []string{"c"},
+					Subject:      "Commit 4 message",
+					Body:         "commit 4",
+				},
+				{
+					Hash:         "e",
+					ParentHashes: []string{"c", "d"},
+					Subject:      "Commit 5 message",
+					Body:         "commit 5",
+				},
+			},
+			config: func(base ReleaseConfig) ReleaseConfig {
+				base.CommitInclude.ParentOfMergeCommit = true
+				return base
+			}(config),
+			expected: []ReleaseCommit{
+				{
+					Commit: Commit{
+						Hash:         "a",
+						ParentHashes: []string{"z"},
+						Subject:      "Commit 1 message",
+						Body:         "commit 1",
+					},
+					CategoryName: "internal-change",
+					ReleaseNote:  "Commit 1 message",
+				},
+				{
+					Commit: Commit{
+						Hash:         "b",
+						ParentHashes: []string{"a"},
+						Subject:      "Commit 2 message",
+						Body:         "commit 2",
+					},
+					CategoryName: "internal-change",
+					ReleaseNote:  "Commit 2 message",
+				},
+				{
+					Commit: Commit{
+						Hash:         "c",
+						ParentHashes: []string{"z", "b"},
+						Subject:      "Commit 3 message",
+						Body:         "commit 3\napp/hello\n- change-category/notable-change",
+					},
+					CategoryName: "notable-change",
+					ReleaseNote:  "Commit 3 message",
 				},
 			},
 		},
