@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -408,8 +409,9 @@ func TestRenderReleaseNote(t *testing.T) {
 	}
 
 	for _, tc := range testcases {
+		ctx := context.Background()
 		t.Run(tc.name, func(t *testing.T) {
-			got := renderReleaseNote(tc.proposal, tc.config)
+			got := renderReleaseNote(ctx, nil, tc.proposal, tc.config)
 
 			expected, err := testdata.ReadFile(tc.expected)
 			require.NoError(t, err)

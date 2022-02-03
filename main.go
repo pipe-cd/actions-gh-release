@@ -95,7 +95,7 @@ func main() {
 
 	proposals := make([]ReleaseProposal, 0, len(changedReleaseFiles))
 	for _, f := range changedReleaseFiles {
-		p, err := buildReleaseProposal(ctx, f, gitExecPath, workspace, event)
+		p, err := buildReleaseProposal(ctx, ghClient, f, gitExecPath, workspace, event)
 		if err != nil {
 			log.Fatalf("Failed to build release for %s: %v\n", f, err)
 		}

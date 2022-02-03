@@ -18,15 +18,19 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/creasty/defaults"
+	"github.com/google/go-github/v39/github"
 	"sigs.k8s.io/yaml"
 )
 
 var (
-	releaseNoteBlockRegex = regexp.MustCompile(`(?s)(?:Release note\*\*:\s*(?:<!--[^<>]*-->\s*)?` + "```(?:release-note)?|```release-note)(.+?)```")
+	releaseNoteBlockRegex       = regexp.MustCompile(`(?s)(?:Release note\*\*:\s*(?:<!--[^<>]*-->\s*)?` + "```(?:release-note)?|```release-note)(.+?)```")
+	mergePullRequestCommitRegex = regexp.MustCompile(`Merge pull request #([0-9]+) from (.+)`)
 )
 
 type ReleaseConfig struct {
@@ -51,11 +55,12 @@ type ReleaseCommitCategoryConfig struct {
 }
 
 type ReleaseNoteGeneratorConfig struct {
-	ShowAbbrevHash      bool                       `json:"showAbbrevHash,omitempty" default:"false"`
-	ShowCommitter       bool                       `json:"showCommitter,omitempty" default:"true"`
-	UseReleaseNoteBlock bool                       `json:"useReleaseNoteBlock,omitempty" default:"false"`
-	CommitInclude       ReleaseCommitMatcherConfig `json:"commitInclude,omitempty"`
-	CommitExclude       ReleaseCommitMatcherConfig `json:"commitExclude,omitempty"`
+	ShowAbbrevHash            bool                       `json:"showAbbrevHash,omitempty" default:"false"`
+	ShowCommitter             bool                       `json:"showCommitter,omitempty" default:"true"`
+	UseReleaseNoteBlock       bool                       `json:"useReleaseNoteBlock,omitempty" default:"false"`
+	UseMergePullRequestParser bool                       `json:"useMergePullRequestParser,omitempty" default:"false"`
+	CommitInclude             ReleaseCommitMatcherConfig `json:"commitInclude,omitempty"`
+	CommitExclude             ReleaseCommitMatcherConfig `json:"commitExclude,omitempty"`
 }
 
 type ReleaseCommitMatcherConfig struct {
@@ -142,7 +147,7 @@ type ReleaseCommit struct {
 	CategoryName string `json:"categoryName,omitempty"`
 }
 
-func buildReleaseProposal(ctx context.Context, releaseFile string, gitExecPath, repoDir string, event *githubEvent) (*ReleaseProposal, error) {
+func buildReleaseProposal(ctx context.Context, client *github.Client, releaseFile string, gitExecPath, repoDir string, event *githubEvent) (*ReleaseProposal, error) {
 	configLoader := func(commit string) (*ReleaseConfig, error) {
 		data, err := readFileAtCommit(ctx, gitExecPath, repoDir, releaseFile, commit)
 		if err != nil {
@@ -191,7 +196,7 @@ func buildReleaseProposal(ctx context.Context, releaseFile string, gitExecPath, 
 		p.TargetCommitish = event.HeadCommit
 	}
 	if p.ReleaseNote == "" {
-		ln := renderReleaseNote(p, *headCfg)
+		ln := renderReleaseNote(ctx, client, p, *headCfg)
 		p.ReleaseNote = string(ln)
 	}
 
@@ -277,11 +282,32 @@ func determineCommitCategory(commit Commit, mergeCommit *Commit, categories []Re
 	return ""
 }
 
-func renderReleaseNote(p ReleaseProposal, cfg ReleaseConfig) []byte {
+func renderReleaseNote(ctx context.Context, client *github.Client, p ReleaseProposal, cfg ReleaseConfig) []byte {
 	var b strings.Builder
 	b.WriteString(fmt.Sprintf("## Release %s with changes since %s\n\n", p.Tag, p.PreTag))
 
 	renderCommit := func(c ReleaseCommit) {
+		if cfg.ReleaseNoteGenerator.UseMergePullRequestParser {
+			subs := mergePullRequestCommitRegex.FindStringSubmatch(c.ReleaseNote)
+			if len(subs) == 3 {
+				number, _ := strconv.Atoi(subs[1])
+				pr, err := getPullRequest(ctx, client, p.Owner, p.Repo, number)
+				if err != nil {
+					log.Printf("Failed to retrieve pull request %d: %s\n", number, err.Error())
+				} else {
+					log.Printf("Successfully retrieved pull request %d\n", number)
+					b.WriteString(fmt.Sprintf("* %s ([#%d](https://github.com/%s/%s/pull/%d)) from %s", pr.GetTitle(), number, p.Owner, p.Repo, number, subs[2]))
+					if cfg.ReleaseNoteGenerator.ShowAbbrevHash {
+						b.WriteString(fmt.Sprintf(" [%s](https://github.com/%s/%s/commit/%s)", c.AbbreviatedHash, p.Owner, p.Repo, c.Hash))
+					}
+					if cfg.ReleaseNoteGenerator.ShowCommitter {
+						b.WriteString(fmt.Sprintf(" - by @%s", pr.GetUser().GetLogin()))
+					}
+					b.WriteString("\n")
+					return
+				}
+			}
+		}
 		b.WriteString(fmt.Sprintf("* %s", c.ReleaseNote))
 		if cfg.ReleaseNoteGenerator.ShowAbbrevHash {
 			b.WriteString(fmt.Sprintf(" [%s](https://github.com/%s/%s/commit/%s)", c.AbbreviatedHash, p.Owner, p.Repo, c.Hash))

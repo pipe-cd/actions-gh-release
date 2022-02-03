@@ -147,3 +147,11 @@ func existRelease(ctx context.Context, client *github.Client, owner, repo, tag s
 	}
 	return resp.StatusCode == http.StatusOK, nil
 }
+
+func getPullRequest(ctx context.Context, client *github.Client, owner, repo string, number int) (*github.PullRequest, error) {
+	pr, _, err := client.PullRequests.Get(ctx, owner, repo, number)
+	if err != nil {
+		return nil, err
+	}
+	return pr, nil
+}
