@@ -296,7 +296,7 @@ func renderReleaseNote(ctx context.Context, client *github.Client, p ReleaseProp
 					log.Printf("Failed to retrieve pull request %d: %s\n", number, err.Error())
 				} else {
 					log.Printf("Successfully retrieved pull request %d\n", number)
-					b.WriteString(fmt.Sprintf("* %s ([#%d](https://github.com/%s/%s/pull/%d)) from %s", pr.GetTitle(), number, p.Owner, p.Repo, number, subs[2]))
+					b.WriteString(fmt.Sprintf("* [#%d](https://github.com/%s/%s/pull/%d) %s from %s", number, p.Owner, p.Repo, number, pr.GetTitle(), subs[2]))
 					if cfg.ReleaseNoteGenerator.ShowAbbrevHash {
 						b.WriteString(fmt.Sprintf(" [%s](https://github.com/%s/%s/commit/%s)", c.AbbreviatedHash, p.Owner, p.Repo, c.Hash))
 					}
