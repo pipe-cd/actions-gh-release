@@ -18,7 +18,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/creasty/defaults"
@@ -26,7 +28,8 @@ import (
 )
 
 var (
-	releaseNoteBlockRegex = regexp.MustCompile(`(?s)(?:Release note\*\*:\s*(?:<!--[^<>]*-->\s*)?` + "```(?:release-note)?|```release-note)(.+?)```")
+	releaseNoteBlockRegex   = regexp.MustCompile(`(?s)(?:Release note\*\*:\s*(?:<!--[^<>]*-->\s*)?` + "```(?:release-note)?|```release-note)(.+?)```")
+	defaultMergeCommitRegex = regexp.MustCompile(`Merge pull request #([0-9]+) from .+`)
 )
 
 type ReleaseConfig struct {
@@ -51,11 +54,12 @@ type ReleaseCommitCategoryConfig struct {
 }
 
 type ReleaseNoteGeneratorConfig struct {
-	ShowAbbrevHash      bool                       `json:"showAbbrevHash,omitempty" default:"false"`
-	ShowCommitter       bool                       `json:"showCommitter,omitempty" default:"true"`
-	UseReleaseNoteBlock bool                       `json:"useReleaseNoteBlock,omitempty" default:"false"`
-	CommitInclude       ReleaseCommitMatcherConfig `json:"commitInclude,omitempty"`
-	CommitExclude       ReleaseCommitMatcherConfig `json:"commitExclude,omitempty"`
+	ShowAbbrevHash              bool                       `json:"showAbbrevHash,omitempty" default:"false"`
+	ShowCommitter               bool                       `json:"showCommitter,omitempty" default:"true"`
+	UseReleaseNoteBlock         bool                       `json:"useReleaseNoteBlock,omitempty" default:"false"`
+	UseDefaultMergeCommitParser bool                       `json:"useDefaultMergeCommitParser,omitempty" default:"false"`
+	CommitInclude               ReleaseCommitMatcherConfig `json:"commitInclude,omitempty"`
+	CommitExclude               ReleaseCommitMatcherConfig `json:"commitExclude,omitempty"`
 }
 
 type ReleaseCommitMatcherConfig struct {
@@ -142,7 +146,7 @@ type ReleaseCommit struct {
 	CategoryName string `json:"categoryName,omitempty"`
 }
 
-func buildReleaseProposal(ctx context.Context, releaseFile string, gitExecPath, repoDir string, event *githubEvent) (*ReleaseProposal, error) {
+func buildReleaseProposal(ctx context.Context, ghClient *githubClient, releaseFile string, gitExecPath, repoDir string, event *githubEvent) (*ReleaseProposal, error) {
 	configLoader := func(commit string) (*ReleaseConfig, error) {
 		data, err := readFileAtCommit(ctx, gitExecPath, repoDir, releaseFile, commit)
 		if err != nil {
@@ -168,7 +172,7 @@ func buildReleaseProposal(ctx context.Context, releaseFile string, gitExecPath, 
 		return nil, err
 	}
 
-	releaseCommits := buildReleaseCommits(commits, *headCfg)
+	releaseCommits := buildReleaseCommits(ctx, ghClient, commits, *headCfg, event)
 	p := ReleaseProposal{
 		Tag:             headCfg.Tag,
 		Name:            headCfg.Name,
@@ -198,7 +202,7 @@ func buildReleaseProposal(ctx context.Context, releaseFile string, gitExecPath, 
 	return &p, nil
 }
 
-func buildReleaseCommits(commits []Commit, cfg ReleaseConfig) []ReleaseCommit {
+func buildReleaseCommits(ctx context.Context, ghClient *githubClient, commits []Commit, cfg ReleaseConfig, event *githubEvent) []ReleaseCommit {
 	hashes := make(map[string]Commit, len(commits))
 	for _, commit := range commits {
 		hashes[commit.Hash] = commit
@@ -240,9 +244,15 @@ func buildReleaseCommits(commits []Commit, cfg ReleaseConfig) []ReleaseCommit {
 			continue
 		}
 
+		releaseNote, err := determineReleaseNote(ctx, ghClient, commit, cfg.ReleaseNoteGenerator, event)
+		if err != nil {
+			log.Fatalf("Failed to determine release note: %v\n", err)
+			continue
+		}
+
 		c := ReleaseCommit{
 			Commit:       commit,
-			ReleaseNote:  determineCommitReleaseNote(commit, cfg.ReleaseNoteGenerator.UseReleaseNoteBlock),
+			ReleaseNote:  releaseNote,
 			CategoryName: determineCommitCategory(commit, mergeCommits[commit.Hash], cfg.CommitCategories),
 		}
 		out = append(out, c)
@@ -250,19 +260,41 @@ func buildReleaseCommits(commits []Commit, cfg ReleaseConfig) []ReleaseCommit {
 	return out
 }
 
-func determineCommitReleaseNote(c Commit, useReleaseNoteBlock bool) string {
-	if !useReleaseNoteBlock {
-		return c.Subject
+func determineReleaseNote(ctx context.Context, ghClient *githubClient, c Commit, cfg ReleaseNoteGeneratorConfig, event *githubEvent) (string, error) {
+	if !cfg.UseDefaultMergeCommitParser {
+		return extractReleaseNote(c.Subject, c.Body, cfg.UseReleaseNoteBlock), nil
 	}
 
-	subs := releaseNoteBlockRegex.FindStringSubmatch(c.Body)
+	subs := defaultMergeCommitRegex.FindStringSubmatch(c.Subject)
 	if len(subs) != 2 {
-		return c.Subject
+		return c.Subject, nil
+	}
+
+	prNumber, err := strconv.Atoi(subs[1])
+	if err != nil {
+		return "", err
+	}
+
+	pr, err := ghClient.getPullRequest(ctx, event.Owner, event.Repo, prNumber)
+	if err != nil {
+		return "", err
+	}
+	return extractReleaseNote(pr.GetTitle(), pr.GetBody(), cfg.UseReleaseNoteBlock), nil
+}
+
+func extractReleaseNote(def, body string, useReleaseNoteBlock bool) string {
+	if !useReleaseNoteBlock {
+		return def
+	}
+
+	subs := releaseNoteBlockRegex.FindStringSubmatch(body)
+	if len(subs) != 2 {
+		return def
 	}
 	if rn := strings.TrimSpace(subs[1]); rn != "" {
 		return rn
 	}
-	return c.Subject
+	return def
 }
 
 func determineCommitCategory(commit Commit, mergeCommit *Commit, categories []ReleaseCommitCategoryConfig) string {
@@ -281,12 +313,17 @@ func renderReleaseNote(p ReleaseProposal, cfg ReleaseConfig) []byte {
 	var b strings.Builder
 	b.WriteString(fmt.Sprintf("## Release %s with changes since %s\n\n", p.Tag, p.PreTag))
 
+	gen := cfg.ReleaseNoteGenerator
 	renderCommit := func(c ReleaseCommit) {
 		b.WriteString(fmt.Sprintf("* %s", c.ReleaseNote))
-		if cfg.ReleaseNoteGenerator.ShowAbbrevHash {
+		if gen.UseDefaultMergeCommitParser {
+			b.WriteString("\n")
+			return
+		}
+		if gen.ShowAbbrevHash {
 			b.WriteString(fmt.Sprintf(" [%s](https://github.com/%s/%s/commit/%s)", c.AbbreviatedHash, p.Owner, p.Repo, c.Hash))
 		}
-		if cfg.ReleaseNoteGenerator.ShowCommitter {
+		if gen.ShowCommitter {
 			b.WriteString(fmt.Sprintf(" - by %s", c.Committer))
 		}
 		b.WriteString("\n")

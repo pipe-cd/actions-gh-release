@@ -25,7 +25,6 @@ import (
 	"syscall"
 
 	"github.com/google/go-github/v39/github"
-	"golang.org/x/oauth2"
 )
 
 const (
@@ -50,18 +49,10 @@ func main() {
 		log.Fatal("GITHUB_WORKSPACE was not defined")
 	}
 
-	var ghClient *github.Client
-	if args.Token != "" {
-		ts := oauth2.StaticTokenSource(
-			&oauth2.Token{AccessToken: args.Token},
-		)
-		tc := oauth2.NewClient(ctx, ts)
-		ghClient = github.NewClient(tc)
-	} else {
-		ghClient = github.NewClient(nil)
-	}
+	cfg := &githubClientConfig{Token: args.Token}
+	ghClient := newGitHubClient(ctx, cfg)
 
-	event, err := parseGitHubEvent(ctx, ghClient)
+	event, err := ghClient.parseGitHubEvent(ctx)
 	if err != nil {
 		log.Fatalf("Failed to parse GitHub event: %v\n", err)
 	}
@@ -95,7 +86,7 @@ func main() {
 
 	proposals := make([]ReleaseProposal, 0, len(changedReleaseFiles))
 	for _, f := range changedReleaseFiles {
-		p, err := buildReleaseProposal(ctx, f, gitExecPath, workspace, event)
+		p, err := buildReleaseProposal(ctx, ghClient, f, gitExecPath, workspace, event)
 		if err != nil {
 			log.Fatalf("Failed to build release for %s: %v\n", f, err)
 		}
@@ -109,7 +100,7 @@ func main() {
 	)
 	for _, p := range proposals {
 		if p.Tag != "" {
-			exist, err := existRelease(ctx, ghClient, event.Owner, event.Repo, p.Tag)
+			exist, err := ghClient.existRelease(ctx, event.Owner, event.Repo, p.Tag)
 			if err != nil {
 				log.Fatalf("Failed to check the existence of release for %s: %v\n", p.Tag, err)
 			}
@@ -123,7 +114,7 @@ func main() {
 
 	notify := func() (*github.IssueComment, error) {
 		body := makeCommentBody(newProposals, existingProposals)
-		return sendComment(ctx, ghClient, event.Owner, event.Repo, event.PRNumber, body)
+		return ghClient.sendComment(ctx, event.Owner, event.Repo, event.PRNumber, body)
 	}
 
 	if len(existingProposals) != 0 {
@@ -151,7 +142,7 @@ func main() {
 	if event.Name == eventPush {
 		log.Printf("Will create %d GitHub releases\n", len(newProposals))
 		for _, p := range newProposals {
-			r, err := createRelease(ctx, ghClient, event.Owner, event.Repo, p)
+			r, err := ghClient.createRelease(ctx, event.Owner, event.Repo, p)
 			if err != nil {
 				log.Fatalf("Failed to create release %s: %v\n", p.Tag, err)
 			}
