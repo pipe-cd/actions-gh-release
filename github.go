@@ -20,9 +20,37 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"regexp"
 
 	"github.com/google/go-github/v39/github"
 	"golang.org/x/oauth2"
+)
+
+var (
+	defaultMergeCommitRegex = regexp.MustCompile(`Merge pull request #([0-9]+) from .+`)
+)
+
+type (
+	PullRequestState     string
+	PullRequestSort      string
+	PullRequestDirection string
+)
+
+const (
+	// PullRequestState
+	PullRequestStateOpen   PullRequestState = "open"
+	PullRequestStateClosed PullRequestState = "closed"
+	PullRequestStateAll    PullRequestState = "all"
+
+	// PullRequestSort
+	PullRequestSortCreated     PullRequestSort = "created"
+	PullRequestSortUpdated     PullRequestSort = "updated"
+	PullRequestSortPopularity  PullRequestSort = "popularity"
+	PullRequestSortLongRunning PullRequestSort = "long-running"
+
+	// PullRequestDirection
+	PullRequestDirectionAsc  PullRequestDirection = "asc"
+	PullRequestDirectionDesc PullRequestDirection = "desc"
 )
 
 type githubEvent struct {
@@ -51,6 +79,18 @@ type githubClient struct {
 
 type githubClientConfig struct {
 	Token string
+}
+
+func (p PullRequestState) String() string {
+	return string(p)
+}
+
+func (p PullRequestSort) String() string {
+	return string(p)
+}
+
+func (p PullRequestDirection) String() string {
+	return string(p)
 }
 
 func newGitHubClient(ctx context.Context, cfg *githubClientConfig) *githubClient {
@@ -173,4 +213,41 @@ func (g *githubClient) existRelease(ctx context.Context, owner, repo, tag string
 func (g *githubClient) getPullRequest(ctx context.Context, owner, repo string, number int) (*github.PullRequest, error) {
 	pr, _, err := g.restClient.PullRequests.Get(ctx, owner, repo, number)
 	return pr, err
+}
+
+type ListPullRequestOptions struct {
+	State     PullRequestState
+	Sort      PullRequestSort
+	Direction PullRequestDirection
+	Limit     int
+}
+
+func (g *githubClient) listPullRequests(ctx context.Context, owner, repo string, opt *ListPullRequestOptions) ([]*github.PullRequest, error) {
+	const perPage = 100
+	listOpts := github.ListOptions{PerPage: perPage}
+	opts := &github.PullRequestListOptions{
+		State:       opt.State.String(),
+		Sort:        opt.Sort.String(),
+		Direction:   opt.Direction.String(),
+		ListOptions: listOpts,
+	}
+	ret := make([]*github.PullRequest, 0, opt.Limit)
+	count := opt.Limit / perPage
+	for i := 0; i <= count; i++ {
+		prs, resp, err := g.restClient.PullRequests.List(ctx, owner, repo, opts)
+		if err != nil {
+			return nil, err
+		}
+		for _, pr := range prs {
+			if len(ret) == opt.Limit {
+				break
+			}
+			ret = append(ret, pr)
+		}
+		if resp.NextPage == 0 || len(ret) == opt.Limit {
+			break
+		}
+		opts.Page = resp.NextPage
+	}
+	return ret, nil
 }
