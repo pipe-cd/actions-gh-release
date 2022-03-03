@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -99,6 +100,7 @@ func TestParseReleaseConfig(t *testing.T) {
 }
 
 func TestBuildReleaseCommits(t *testing.T) {
+	ctx := context.Background()
 	config := ReleaseConfig{
 		Tag:  "v1.1.0",
 		Name: "hello",
@@ -151,10 +153,12 @@ func TestBuildReleaseCommits(t *testing.T) {
 		commits  []Commit
 		config   ReleaseConfig
 		expected []ReleaseCommit
+		wantErr  bool
 	}{
 		{
 			name:     "empty",
 			expected: []ReleaseCommit{},
+			wantErr:  false,
 		},
 		{
 			name: "ok",
@@ -215,6 +219,7 @@ func TestBuildReleaseCommits(t *testing.T) {
 					ReleaseNote:  "Commit 4 release note",
 				},
 			},
+			wantErr: false,
 		},
 		{
 			name: "Add include condition: parent of merge commit",
@@ -286,12 +291,14 @@ func TestBuildReleaseCommits(t *testing.T) {
 					ReleaseNote:  "Commit 3 message",
 				},
 			},
+			wantErr: false,
 		},
 	}
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := buildReleaseCommits(tc.commits, tc.config)
+			got, err := buildReleaseCommits(ctx, nil, tc.commits, tc.config, nil)
+			assert.Equal(t, tc.wantErr, err != nil)
 			assert.Equal(t, tc.expected, got)
 		})
 	}

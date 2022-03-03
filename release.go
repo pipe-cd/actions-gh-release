@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/creasty/defaults"
+	"github.com/google/go-github/v39/github"
 	"sigs.k8s.io/yaml"
 )
 
@@ -51,11 +52,12 @@ type ReleaseCommitCategoryConfig struct {
 }
 
 type ReleaseNoteGeneratorConfig struct {
-	ShowAbbrevHash      bool                       `json:"showAbbrevHash,omitempty" default:"false"`
-	ShowCommitter       bool                       `json:"showCommitter,omitempty" default:"true"`
-	UseReleaseNoteBlock bool                       `json:"useReleaseNoteBlock,omitempty" default:"false"`
-	CommitInclude       ReleaseCommitMatcherConfig `json:"commitInclude,omitempty"`
-	CommitExclude       ReleaseCommitMatcherConfig `json:"commitExclude,omitempty"`
+	ShowAbbrevHash         bool                       `json:"showAbbrevHash,omitempty" default:"false"`
+	ShowCommitter          bool                       `json:"showCommitter,omitempty" default:"true"`
+	UseReleaseNoteBlock    bool                       `json:"useReleaseNoteBlock,omitempty" default:"false"`
+	UsePullRequestMetadata bool                       `json:"usePullRequestMetadata,omitempty" default:"false"`
+	CommitInclude          ReleaseCommitMatcherConfig `json:"commitInclude,omitempty"`
+	CommitExclude          ReleaseCommitMatcherConfig `json:"commitExclude,omitempty"`
 }
 
 type ReleaseCommitMatcherConfig struct {
@@ -138,11 +140,12 @@ type ReleaseProposal struct {
 
 type ReleaseCommit struct {
 	Commit
-	ReleaseNote  string `json:"releaseNote,omitempty"`
-	CategoryName string `json:"categoryName,omitempty"`
+	ReleaseNote       string `json:"releaseNote,omitempty"`
+	CategoryName      string `json:"categoryName,omitempty"`
+	PullRequestNumber int    `json:"pullRequestNumber,omitempty"`
 }
 
-func buildReleaseProposal(ctx context.Context, releaseFile string, gitExecPath, repoDir string, event *githubEvent) (*ReleaseProposal, error) {
+func buildReleaseProposal(ctx context.Context, ghClient *githubClient, releaseFile string, gitExecPath, repoDir string, event *githubEvent) (*ReleaseProposal, error) {
 	configLoader := func(commit string) (*ReleaseConfig, error) {
 		data, err := readFileAtCommit(ctx, gitExecPath, repoDir, releaseFile, commit)
 		if err != nil {
@@ -168,7 +171,10 @@ func buildReleaseProposal(ctx context.Context, releaseFile string, gitExecPath, 
 		return nil, err
 	}
 
-	releaseCommits := buildReleaseCommits(commits, *headCfg)
+	releaseCommits, err := buildReleaseCommits(ctx, ghClient, commits, *headCfg, event)
+	if err != nil {
+		return nil, err
+	}
 	p := ReleaseProposal{
 		Tag:             headCfg.Tag,
 		Name:            headCfg.Name,
@@ -198,7 +204,7 @@ func buildReleaseProposal(ctx context.Context, releaseFile string, gitExecPath, 
 	return &p, nil
 }
 
-func buildReleaseCommits(commits []Commit, cfg ReleaseConfig) []ReleaseCommit {
+func buildReleaseCommits(ctx context.Context, ghClient *githubClient, commits []Commit, cfg ReleaseConfig, event *githubEvent) ([]ReleaseCommit, error) {
 	hashes := make(map[string]Commit, len(commits))
 	for _, commit := range commits {
 		hashes[commit.Hash] = commit
@@ -227,6 +233,25 @@ func buildReleaseCommits(commits []Commit, cfg ReleaseConfig) []ReleaseCommit {
 		}
 	}
 
+	gen, limit := cfg.ReleaseNoteGenerator, 1000
+	prs := make(map[int]*github.PullRequest, limit)
+	if gen.UsePullRequestMetadata {
+		opts := &ListPullRequestOptions{
+			State:     PullRequestStateClosed,
+			Sort:      PullRequestSortUpdated,
+			Direction: PullRequestDirectionDesc,
+			Limit:     limit,
+		}
+		v, err := ghClient.listPullRequests(ctx, event.Owner, event.Repo, opts)
+		if err != nil {
+			return nil, err
+		}
+		for i := range v {
+			number := *v[i].Number
+			prs[number] = v[i]
+		}
+	}
+
 	out := make([]ReleaseCommit, 0, len(commits))
 	for _, commit := range commits {
 
@@ -242,27 +267,46 @@ func buildReleaseCommits(commits []Commit, cfg ReleaseConfig) []ReleaseCommit {
 
 		c := ReleaseCommit{
 			Commit:       commit,
-			ReleaseNote:  determineCommitReleaseNote(commit, cfg.ReleaseNoteGenerator.UseReleaseNoteBlock),
+			ReleaseNote:  extractReleaseNote(commit.Subject, commit.Body, gen.UseReleaseNoteBlock),
 			CategoryName: determineCommitCategory(commit, mergeCommits[commit.Hash], cfg.CommitCategories),
 		}
+
+		if gen.UsePullRequestMetadata {
+			prNumber, ok := commit.PullRequestNumber()
+			if !ok {
+				continue
+			}
+			c.PullRequestNumber = prNumber
+
+			var err error
+			pr, ok := prs[prNumber]
+			if !ok {
+				pr, err = ghClient.getPullRequest(ctx, event.Owner, event.Repo, prNumber)
+			}
+			if err != nil {
+				return nil, err
+			}
+			c.ReleaseNote = extractReleaseNote(pr.GetTitle(), pr.GetBody(), gen.UseReleaseNoteBlock)
+		}
+
 		out = append(out, c)
 	}
-	return out
+	return out, nil
 }
 
-func determineCommitReleaseNote(c Commit, useReleaseNoteBlock bool) string {
+func extractReleaseNote(def, body string, useReleaseNoteBlock bool) string {
 	if !useReleaseNoteBlock {
-		return c.Subject
+		return def
 	}
 
-	subs := releaseNoteBlockRegex.FindStringSubmatch(c.Body)
+	subs := releaseNoteBlockRegex.FindStringSubmatch(body)
 	if len(subs) != 2 {
-		return c.Subject
+		return def
 	}
 	if rn := strings.TrimSpace(subs[1]); rn != "" {
 		return rn
 	}
-	return c.Subject
+	return def
 }
 
 func determineCommitCategory(commit Commit, mergeCommit *Commit, categories []ReleaseCommitCategoryConfig) string {
@@ -281,12 +325,18 @@ func renderReleaseNote(p ReleaseProposal, cfg ReleaseConfig) []byte {
 	var b strings.Builder
 	b.WriteString(fmt.Sprintf("## Release %s with changes since %s\n\n", p.Tag, p.PreTag))
 
+	gen := cfg.ReleaseNoteGenerator
 	renderCommit := func(c ReleaseCommit) {
 		b.WriteString(fmt.Sprintf("* %s", c.ReleaseNote))
-		if cfg.ReleaseNoteGenerator.ShowAbbrevHash {
+		if gen.UsePullRequestMetadata && c.PullRequestNumber != 0 {
+			b.WriteString(fmt.Sprintf(" ([#%d](https://github.com/%s/%s/pull/%d))", c.PullRequestNumber, p.Owner, p.Repo, c.PullRequestNumber))
+			b.WriteString("\n")
+			return
+		}
+		if gen.ShowAbbrevHash {
 			b.WriteString(fmt.Sprintf(" [%s](https://github.com/%s/%s/commit/%s)", c.AbbreviatedHash, p.Owner, p.Repo, c.Hash))
 		}
-		if cfg.ReleaseNoteGenerator.ShowCommitter {
+		if gen.ShowCommitter {
 			b.WriteString(fmt.Sprintf(" - by %s", c.Committer))
 		}
 		b.WriteString("\n")

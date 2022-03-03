@@ -9,56 +9,57 @@ An action that enables operating GitHub release via pull request. You send a pul
 - Adding a RELEASE file to the repository. You can also have multiple RELEASE files in case of monorepo style. Its content looks like this:
 
 ``` yaml
-tag: v0.1.0                       # The tag number will be created. Required.
+tag: v0.1.0                        # The tag number will be created. Required.
 
 # # Optional fields:
 #
-# name: string                    # The release name. Default is empty.
-# title: string                   # The release title. Default is "Release ${tag}".
-# targetCommitish: string         # The release commitish. Default is the merged commit.
-# releaseNote: string             # The release body. Default is the auto-generated release note.
-# prerelease: bool                # True if this is a prerelease. Default is false.
+# name: string                     # The release name. Default is empty.
+# title: string                    # The release title. Default is "Release ${tag}".
+# targetCommitish: string          # The release commitish. Default is the merged commit.
+# releaseNote: string              # The release body. Default is the auto-generated release note.
+# prerelease: bool                 # True if this is a prerelease. Default is false.
 #
 #
 # # If specified, all matching commits will be excluded from release. Empty means excluding nothing.
 #
 # commitExclude:
-#   parentOfMergeCommit: bool     # True is whether the commit is the parent commit of the matching merge commit. Default is false.
-#   prefixes: []string            # Matches if commit's subject is prefixed by one of the given values. Default is emtpy.
-#   contains: []string            # Matches if commit's body is containing one of the given values. Default is emtpy.
+#   parentOfMergeCommit: bool      # True is whether the commit is the parent commit of the matching merge commit. Default is false.
+#   prefixes: []string             # Matches if commit's subject is prefixed by one of the given values. Default is emtpy.
+#   contains: []string             # Matches if commit's body is containing one of the given values. Default is emtpy.
 #
 #
 # # If specified, all matching commits will be included to release. Empty means including alls.
 #
 # commitInclude:
-#   parentOfMergeCommit: bool     # True is whether the commit is the parent commit of the matching merge commit. Default is false.
-#   prefixes: []string            # Matches if commit's subject is prefixed by one of the given values. Default is emtpy.
-#   contains: []string            # Matches if commit's body is containing one of the given values. Default is emtpy.
+#   parentOfMergeCommit: bool      # True is whether the commit is the parent commit of the matching merge commit. Default is false.
+#   prefixes: []string             # Matches if commit's subject is prefixed by one of the given values. Default is emtpy.
+#   contains: []string             # Matches if commit's body is containing one of the given values. Default is emtpy.
 #
 #
 # # List of categories and how to decide which category a commit should belong to.
 #
 # commitCategories:
-#   - title: string               # Category title.
-#     parentOfMergeCommit: bool   # True is whether the commit is the parent commit of the matching merge commit. Default is false.
-#     contains: []string          # Matches if commit's subject is prefixed by one of the given values. Default is emtpy.
-#     prefixes: []string          # Matches if commit's body is containing one of the given values. Default is emtpy.
+#   - title: string                # Category title.
+#     parentOfMergeCommit: bool    # True is whether the commit is the parent commit of the matching merge commit. Default is false.
+#     contains: []string           # Matches if commit's subject is prefixed by one of the given values. Default is emtpy.
+#     prefixes: []string           # Matches if commit's body is containing one of the given values. Default is emtpy.
 #
 #
 # # Config used while generating release note.
 #
 # releaseNoteGenerator:
-#   showAbbrevHash: bool          # Whether to include abbreviated hash value in release note. Default is false.
-#   showCommitter: bool           # Whether to include committer in release note. Default is true.
-#   useReleaseNoteBlock: bool     # Whether to use release note block instead of commit message. Default is false.
-#   commitExclude:                # Additional excludes applied while generating release note.
-#     parentOfMergeCommit: bool   # True is whether the commit is the parent commit of the matching merge commit. Default is false.
-#     prefixes: []string          # Matches if commit's subject is prefixed by one of the given values. Default is emtpy.
-#     contains: []string          # Matches if commit's body is containing one of the given values. Default is emtpy.
-#   commitInclude:                # Additional includes applied while generating release note.
-#     parentOfMergeCommit: bool   # True is whether the commit is the parent commit of the matching merge commit. Default is false.
-#     prefixes: []string          # Matches if commit's subject is prefixed by one of the given values. Default is emtpy.
-#     contains: []string          # Matches if commit's body is containing one of the given values. Default is emtpy.
+#   showAbbrevHash: bool           # Whether to include abbreviated hash value in release note. Default is false.
+#   showCommitter: bool            # Whether to include committer in release note. Default is true.
+#   useReleaseNoteBlock: bool      # Whether to use release note block instead of commit message. Default is false.
+#   usePullRequestMetadata: bool   # Whether to use pull request metadata instead of commit message when using merge-commit. If useReleaseNoteBlock is also true, release note block of pull request is used. Otherwise pull request title is used. If this option is set, showAbbrevHash and showCommitter is ignored. Default is false.
+#   commitExclude:                 # Additional excludes applied while generating release note.
+#     parentOfMergeCommit: bool    # True is whether the commit is the parent commit of the matching merge commit. Default is false.
+#     prefixes: []string           # Matches if commit's subject is prefixed by one of the given values. Default is emtpy.
+#     contains: []string           # Matches if commit's body is containing one of the given values. Default is emtpy.
+#   commitInclude:                 # Additional includes applied while generating release note.
+#     parentOfMergeCommit: bool    # True is whether the commit is the parent commit of the matching merge commit. Default is false.
+#     prefixes: []string           # Matches if commit's subject is prefixed by one of the given values. Default is emtpy.
+#     contains: []string           # Matches if commit's body is containing one of the given values. Default is emtpy.
 ```
 
 - Adding a new workflow (eg: `.github/workflows/gh-release.yaml`) with the content as below:

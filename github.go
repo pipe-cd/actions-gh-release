@@ -20,8 +20,37 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"regexp"
 
 	"github.com/google/go-github/v39/github"
+	"golang.org/x/oauth2"
+)
+
+var (
+	defaultMergeCommitRegex = regexp.MustCompile(`Merge pull request #([0-9]+) from .+`)
+)
+
+type (
+	PullRequestState     string
+	PullRequestSort      string
+	PullRequestDirection string
+)
+
+const (
+	// PullRequestState
+	PullRequestStateOpen   PullRequestState = "open"
+	PullRequestStateClosed PullRequestState = "closed"
+	PullRequestStateAll    PullRequestState = "all"
+
+	// PullRequestSort
+	PullRequestSortCreated     PullRequestSort = "created"
+	PullRequestSortUpdated     PullRequestSort = "updated"
+	PullRequestSortPopularity  PullRequestSort = "popularity"
+	PullRequestSortLongRunning PullRequestSort = "long-running"
+
+	// PullRequestDirection
+	PullRequestDirectionAsc  PullRequestDirection = "asc"
+	PullRequestDirectionDesc PullRequestDirection = "desc"
 )
 
 type githubEvent struct {
@@ -44,9 +73,42 @@ const (
 	eventIssueComment = "issue_comment"
 )
 
+type githubClient struct {
+	restClient *github.Client
+}
+
+type githubClientConfig struct {
+	Token string
+}
+
+func (p PullRequestState) String() string {
+	return string(p)
+}
+
+func (p PullRequestSort) String() string {
+	return string(p)
+}
+
+func (p PullRequestDirection) String() string {
+	return string(p)
+}
+
+func newGitHubClient(ctx context.Context, cfg *githubClientConfig) *githubClient {
+	var httpClient *http.Client
+	if cfg.Token != "" {
+		t := &oauth2.Token{AccessToken: cfg.Token}
+		ts := oauth2.StaticTokenSource(t)
+		httpClient = oauth2.NewClient(ctx, ts)
+	}
+
+	return &githubClient{
+		restClient: github.NewClient(httpClient),
+	}
+}
+
 // parsePullRequestEvent uses the given environment variables
 // to parse and build githubEvent struct.
-func parseGitHubEvent(ctx context.Context, client *github.Client) (*githubEvent, error) {
+func (g *githubClient) parseGitHubEvent(ctx context.Context) (*githubEvent, error) {
 	var parseEvents = map[string]struct{}{
 		eventPush:         {},
 		eventPullRequest:  {},
@@ -98,7 +160,7 @@ func parseGitHubEvent(ctx context.Context, client *github.Client) (*githubEvent,
 			prNum = e.Issue.GetNumber()
 		)
 
-		pr, _, err := client.PullRequests.Get(ctx, owner, repo, prNum)
+		pr, _, err := g.restClient.PullRequests.Get(ctx, owner, repo, prNum)
 		if err != nil {
 			return nil, err
 		}
@@ -119,15 +181,15 @@ func parseGitHubEvent(ctx context.Context, client *github.Client) (*githubEvent,
 	}
 }
 
-func sendComment(ctx context.Context, client *github.Client, owner, repo string, prNum int, body string) (*github.IssueComment, error) {
-	c, _, err := client.Issues.CreateComment(ctx, owner, repo, prNum, &github.IssueComment{
+func (g *githubClient) sendComment(ctx context.Context, owner, repo string, prNum int, body string) (*github.IssueComment, error) {
+	c, _, err := g.restClient.Issues.CreateComment(ctx, owner, repo, prNum, &github.IssueComment{
 		Body: &body,
 	})
 	return c, err
 }
 
-func createRelease(ctx context.Context, client *github.Client, owner, repo string, p ReleaseProposal) (*github.RepositoryRelease, error) {
-	release, _, err := client.Repositories.CreateRelease(ctx, owner, repo, &github.RepositoryRelease{
+func (g *githubClient) createRelease(ctx context.Context, owner, repo string, p ReleaseProposal) (*github.RepositoryRelease, error) {
+	release, _, err := g.restClient.Repositories.CreateRelease(ctx, owner, repo, &github.RepositoryRelease{
 		TagName:         &p.Tag,
 		Name:            &p.Title,
 		TargetCommitish: &p.TargetCommitish,
@@ -137,8 +199,8 @@ func createRelease(ctx context.Context, client *github.Client, owner, repo strin
 	return release, err
 }
 
-func existRelease(ctx context.Context, client *github.Client, owner, repo, tag string) (bool, error) {
-	_, resp, err := client.Repositories.GetReleaseByTag(ctx, owner, repo, tag)
+func (g *githubClient) existRelease(ctx context.Context, owner, repo, tag string) (bool, error) {
+	_, resp, err := g.restClient.Repositories.GetReleaseByTag(ctx, owner, repo, tag)
 	if err != nil {
 		if resp != nil && resp.StatusCode == http.StatusNotFound {
 			return false, nil
@@ -146,4 +208,46 @@ func existRelease(ctx context.Context, client *github.Client, owner, repo, tag s
 		return false, err
 	}
 	return resp.StatusCode == http.StatusOK, nil
+}
+
+func (g *githubClient) getPullRequest(ctx context.Context, owner, repo string, number int) (*github.PullRequest, error) {
+	pr, _, err := g.restClient.PullRequests.Get(ctx, owner, repo, number)
+	return pr, err
+}
+
+type ListPullRequestOptions struct {
+	State     PullRequestState
+	Sort      PullRequestSort
+	Direction PullRequestDirection
+	Limit     int
+}
+
+func (g *githubClient) listPullRequests(ctx context.Context, owner, repo string, opt *ListPullRequestOptions) ([]*github.PullRequest, error) {
+	const perPage = 100
+	listOpts := github.ListOptions{PerPage: perPage}
+	opts := &github.PullRequestListOptions{
+		State:       opt.State.String(),
+		Sort:        opt.Sort.String(),
+		Direction:   opt.Direction.String(),
+		ListOptions: listOpts,
+	}
+	ret := make([]*github.PullRequest, 0, opt.Limit)
+	count := opt.Limit / perPage
+	for i := 0; i <= count; i++ {
+		prs, resp, err := g.restClient.PullRequests.List(ctx, owner, repo, opts)
+		if err != nil {
+			return nil, err
+		}
+		for _, pr := range prs {
+			if len(ret) == opt.Limit {
+				break
+			}
+			ret = append(ret, pr)
+		}
+		if resp.NextPage == 0 || len(ret) == opt.Limit {
+			break
+		}
+		opts.Page = resp.NextPage
+	}
+	return ret, nil
 }

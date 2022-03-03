@@ -55,6 +55,24 @@ func (c Commit) IsMerge() bool {
 	return len(c.ParentHashes) == 2
 }
 
+func (c Commit) PullRequestNumber() (int, bool) {
+	if !c.IsMerge() {
+		return 0, false
+	}
+
+	subs := defaultMergeCommitRegex.FindStringSubmatch(c.Subject)
+	if len(subs) != 2 {
+		return 0, false
+	}
+
+	prNumber, err := strconv.Atoi(subs[1])
+	if err != nil {
+		return 0, false
+	}
+
+	return prNumber, true
+}
+
 func parseCommits(log string) ([]Commit, error) {
 	lines := strings.Split(log, separator)
 	if len(lines) < 1 {
