@@ -143,6 +143,7 @@ type ReleaseCommit struct {
 	ReleaseNote       string `json:"releaseNote,omitempty"`
 	CategoryName      string `json:"categoryName,omitempty"`
 	PullRequestNumber int    `json:"pullRequestNumber,omitempty"`
+	PullRequestOwner  string `json:"pullRequestOwner,omitempty"`
 }
 
 func buildReleaseProposal(ctx context.Context, ghClient *githubClient, releaseFile string, gitExecPath, repoDir string, event *githubEvent) (*ReleaseProposal, error) {
@@ -286,6 +287,7 @@ func buildReleaseCommits(ctx context.Context, ghClient *githubClient, commits []
 			if err != nil {
 				return nil, err
 			}
+			c.PullRequestOwner = pr.GetUser().GetLogin()
 			c.ReleaseNote = extractReleaseNote(pr.GetTitle(), pr.GetBody(), gen.UseReleaseNoteBlock)
 		}
 
@@ -330,6 +332,9 @@ func renderReleaseNote(p ReleaseProposal, cfg ReleaseConfig) []byte {
 		b.WriteString(fmt.Sprintf("* %s", c.ReleaseNote))
 		if gen.UsePullRequestMetadata && c.PullRequestNumber != 0 {
 			b.WriteString(fmt.Sprintf(" ([#%d](https://github.com/%s/%s/pull/%d))", c.PullRequestNumber, p.Owner, p.Repo, c.PullRequestNumber))
+			if !gen.UseReleaseNoteBlock && c.PullRequestOwner != "" {
+				b.WriteString(fmt.Sprintf(" - by @%s", c.PullRequestOwner))
+			}
 			b.WriteString("\n")
 			return
 		}
