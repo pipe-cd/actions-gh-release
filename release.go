@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"regexp"
 	"strings"
 
@@ -266,7 +267,7 @@ func buildReleaseCommits(ctx context.Context, ghClient *githubClient, commits []
 		}
 		pr, err := ghClient.getPullRequest(ctx, event.Owner, event.Repo, prNumber)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to get pull request by number %d: %v", prNumber, err)
 		}
 		return pr, nil
 	}
@@ -293,7 +294,8 @@ func buildReleaseCommits(ctx context.Context, ghClient *githubClient, commits []
 		if gen.UsePullRequestMetadata {
 			pr, err := getPullRequest(commit)
 			if err != nil {
-				return nil, err
+				// only error logging, ignore error
+				log.Printf("Failed to get pull request: %v\n", err)
 			}
 			if pr != nil {
 				c.PullRequestNumber = pr.GetNumber()
