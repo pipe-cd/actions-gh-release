@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"regexp"
 	"strings"
 
@@ -235,7 +236,7 @@ func buildReleaseCommits(ctx context.Context, ghClient *githubClient, commits []
 	}
 
 	gen, limit := cfg.ReleaseNoteGenerator, 1000
-	prs := make(map[int]*github.PullRequest, limit)
+	prs := make(map[string]*github.PullRequest, limit)
 	if gen.UsePullRequestMetadata {
 		opts := &ListPullRequestOptions{
 			State:     PullRequestStateClosed,
@@ -248,9 +249,27 @@ func buildReleaseCommits(ctx context.Context, ghClient *githubClient, commits []
 			return nil, err
 		}
 		for i := range v {
-			number := *v[i].Number
-			prs[number] = v[i]
+			sha := *v[i].MergeCommitSHA
+			prs[sha] = v[i]
 		}
+	}
+
+	getPullRequest := func(commit Commit) (*github.PullRequest, error) {
+		if !commit.IsMerge() {
+			return nil, nil
+		}
+		if pr, ok := prs[commit.Hash]; ok {
+			return pr, nil
+		}
+		prNumber, ok := commit.PullRequestNumber()
+		if !ok {
+			return nil, nil
+		}
+		pr, err := ghClient.getPullRequest(ctx, event.Owner, event.Repo, prNumber)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get pull request by number %d: %v", prNumber, err)
+		}
+		return pr, nil
 	}
 
 	out := make([]ReleaseCommit, 0, len(commits))
@@ -273,22 +292,16 @@ func buildReleaseCommits(ctx context.Context, ghClient *githubClient, commits []
 		}
 
 		if gen.UsePullRequestMetadata {
-			prNumber, ok := commit.PullRequestNumber()
-			if !ok {
-				continue
-			}
-			c.PullRequestNumber = prNumber
-
-			var err error
-			pr, ok := prs[prNumber]
-			if !ok {
-				pr, err = ghClient.getPullRequest(ctx, event.Owner, event.Repo, prNumber)
-			}
+			pr, err := getPullRequest(commit)
 			if err != nil {
-				return nil, err
+				// only error logging, ignore error
+				log.Printf("Failed to get pull request: %v\n", err)
 			}
-			c.PullRequestOwner = pr.GetUser().GetLogin()
-			c.ReleaseNote = extractReleaseNote(pr.GetTitle(), pr.GetBody(), gen.UseReleaseNoteBlock)
+			if pr != nil {
+				c.PullRequestNumber = pr.GetNumber()
+				c.PullRequestOwner = pr.GetUser().GetLogin()
+				c.ReleaseNote = extractReleaseNote(pr.GetTitle(), pr.GetBody(), gen.UseReleaseNoteBlock)
+			}
 		}
 
 		out = append(out, c)
