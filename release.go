@@ -235,8 +235,7 @@ func buildReleaseCommits(ctx context.Context, ghClient *githubClient, commits []
 	}
 
 	gen, limit := cfg.ReleaseNoteGenerator, 1000
-	shaPRs := make(map[string]*github.PullRequest, limit)
-	numPRs := make(map[int]*github.PullRequest, limit)
+	prs := make(map[string]*github.PullRequest, limit)
 	if gen.UsePullRequestMetadata {
 		opts := &ListPullRequestOptions{
 			State:     PullRequestStateClosed,
@@ -250,9 +249,7 @@ func buildReleaseCommits(ctx context.Context, ghClient *githubClient, commits []
 		}
 		for i := range v {
 			sha := *v[i].MergeCommitSHA
-			shaPRs[sha] = v[i]
-			number := *v[i].Number
-			numPRs[number] = v[i]
+			prs[sha] = v[i]
 		}
 	}
 
@@ -260,15 +257,12 @@ func buildReleaseCommits(ctx context.Context, ghClient *githubClient, commits []
 		if !commit.IsMerge() {
 			return nil, nil
 		}
-		if pr, ok := shaPRs[commit.Hash]; ok {
+		if pr, ok := prs[commit.Hash]; ok {
 			return pr, nil
 		}
 		prNumber, ok := commit.PullRequestNumber()
 		if !ok {
 			return nil, nil
-		}
-		if pr, ok := numPRs[prNumber]; ok {
-			return pr, nil
 		}
 		pr, err := ghClient.getPullRequest(ctx, event.Owner, event.Repo, prNumber)
 		if err != nil {
