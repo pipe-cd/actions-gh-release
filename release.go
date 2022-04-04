@@ -235,7 +235,7 @@ func buildReleaseCommits(ctx context.Context, ghClient *githubClient, commits []
 		}
 	}
 
-	gen, limit := cfg.ReleaseNoteGenerator, 1000
+	gen, limit := cfg.ReleaseNoteGenerator, 5
 	prs := make(map[string]*github.PullRequest, limit)
 	if gen.UsePullRequestMetadata {
 		opts := &ListPullRequestOptions{

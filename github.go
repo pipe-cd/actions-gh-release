@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 	"regexp"
@@ -223,7 +224,7 @@ type ListPullRequestOptions struct {
 }
 
 func (g *githubClient) listPullRequests(ctx context.Context, owner, repo string, opt *ListPullRequestOptions) ([]*github.PullRequest, error) {
-	const perPage = 100
+	const perPage = 1
 	listOpts := github.ListOptions{PerPage: perPage}
 	opts := &github.PullRequestListOptions{
 		State:       opt.State.String(),
@@ -247,6 +248,7 @@ func (g *githubClient) listPullRequests(ctx context.Context, owner, repo string,
 		if resp.NextPage == 0 || len(ret) == opt.Limit {
 			break
 		}
+		log.Println(resp.NextPage)
 		opts.Page = resp.NextPage
 	}
 	return ret, nil
