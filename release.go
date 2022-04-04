@@ -249,7 +249,12 @@ func buildReleaseCommits(ctx context.Context, ghClient *githubClient, commits []
 			return nil, err
 		}
 		for i := range v {
-			sha := *v[i].MergeCommitSHA
+			sha := v[i].GetMergeCommitSHA()
+			// if merge commit sha is empty, the test merge commit was not generated.
+			// this cause when PR is conflict and closed without resolved.
+			if sha == "" {
+				continue
+			}
 			prs[sha] = v[i]
 		}
 	}
