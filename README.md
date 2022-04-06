@@ -4,6 +4,8 @@ An action that enables operating GitHub release via pull request. You send a pul
 
 ![](https://github.com/pipe-cd/actions-gh-release/blob/main/assets/changelog-comment.png)
 
+**NOTE**: The source code of this GitHub Action is placing under the tool directory of of [pipe-cd/pipecd](https://github.com/pipe-cd/pipecd/tree/master/tool) repository. If you want to make a pull request or raise an issue, please send it to [pipe-cd/pipecd](https://github.com/pipe-cd/pipecd) repository.
+
 ## Usage
 
 - Adding a RELEASE file to the repository. You can also have multiple RELEASE files in case of monorepo style. Its content looks like this:
