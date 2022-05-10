@@ -84,7 +84,9 @@ jobs:
   gh-release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
       - uses: pipe-cd/actions-gh-release@v2.3.4
         with:
           release_file: '**/RELEASE'
