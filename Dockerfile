@@ -1,1 +1,1 @@
-FROM gcr.io/pipecd/actions-gh-release:2.3.4
+FROM ghcr.io/pipe-cd/actions-gh-release:9f675f022b49014e3c6e9511b702409b67245572a8b0cfb3ebe147f731a312de
