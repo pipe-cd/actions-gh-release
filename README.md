@@ -54,6 +54,7 @@ tag: v0.1.0                        # The tag number will be created. Required.
 #   showCommitter: bool            # Whether to include committer in release note. Default is true.
 #   useReleaseNoteBlock: bool      # Whether to use release note block instead of commit message. Default is false.
 #   usePullRequestMetadata: bool   # Whether to use pull request metadata instead of commit message when using merge-commit. If useReleaseNoteBlock is also true, release note block of pull request is used. Otherwise pull request title is used. If this option is set, showAbbrevHash and showCommitter is ignored. Default is false.
+#   usePullRequestLink: bool       # Whether to use the links of pull request instead of pull request numbers when including that numbers.
 #   commitExclude:                 # Additional excludes applied while generating release note.
 #     parentOfMergeCommit: bool    # True is whether the commit is the parent commit of the matching merge commit. Default is false.
 #     prefixes: []string           # Matches if commit's subject is prefixed by one of the given values. Default is emtpy.
