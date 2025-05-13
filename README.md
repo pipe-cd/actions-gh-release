@@ -84,6 +84,9 @@ on:
 jobs:
   gh-release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write      # Required to create a GitHub release and tag, as GITHUB_TOKEN is read-only by default.
+      pull-requests: write # Required to comment the release note on the pull request.
     steps:
       - uses: actions/checkout@v3
         with:
