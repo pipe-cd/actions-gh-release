@@ -45,6 +45,7 @@ tag: v0.1.0                        # The tag number will be created. Required.
 #     parentOfMergeCommit: bool    # True is whether the commit is the parent commit of the matching merge commit. Default is false.
 #     contains: []string           # Matches if commit's subject is prefixed by one of the given values. Default is emtpy.
 #     prefixes: []string           # Matches if commit's body is containing one of the given values. Default is emtpy.
+#     labels:   []string           # Matches if Pull Request's labels contain one of the given values. Default is empty.
 #
 #
 # # Config used while generating release note.
